@@ -158,42 +158,55 @@ function LobbyTV({
   busy: boolean;
 }) {
   return (
-    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
-      <section className="flex flex-col justify-center px-8 py-10 sm:px-14">
-        <p className="chip w-fit">Té de Leandro Vargas Corao</p>
-        <h1 className="brand mt-4 text-[clamp(3.5rem,10vw,7rem)] text-[var(--teal-deep)]">
-          El Precio Justo
-        </h1>
-        <p className="mt-3 max-w-xl text-xl font-700 text-[var(--ink-soft)]">
-          Escaneá el código o entrá a <strong>/jugar</strong> con el código de
-          la sala.
-        </p>
-        <div className="mt-8 flex flex-wrap items-end gap-6">
-          <div>
-            <p className="text-sm font-800 uppercase tracking-[0.2em] text-[var(--ink-soft)]">
-              Código
-            </p>
-            <p className="brand glow-sun text-[clamp(4rem,14vw,8rem)] text-[var(--coral)]">
-              {room.code}
-            </p>
-          </div>
-          {joinUrl ? (
-            <div className="rounded-[1.5rem] bg-white p-4 shadow-[var(--shadow)]">
-              <QRCodeSVG value={joinUrl} size={180} level="M" includeMargin />
+    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.15fr_0.85fr]">
+      <section className="relative min-h-[48vh] overflow-hidden lg:min-h-dvh">
+        <div
+          className="absolute inset-0 bg-cover bg-[center_30%] sm:bg-center"
+          style={{ backgroundImage: "url(/branding/leandro-eco.jpg)" }}
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-[#061526] via-[#0b2744]/55 to-transparent"
+          aria-hidden
+        />
+        <div className="relative z-10 flex h-full min-h-[48vh] flex-col justify-end px-8 py-10 sm:px-14 lg:min-h-dvh">
+          <h1 className="brand text-[clamp(2.4rem,6vw,4.2rem)] leading-[0.95] text-white">
+            Té de Leandro Vargas Corao
+          </h1>
+          <p className="brand mt-2 text-[clamp(1.6rem,4vw,2.6rem)] text-[var(--sky)]">
+            El Precio Justo
+          </p>
+          <p className="mt-3 max-w-xl text-lg font-700 text-white/85">
+            Escaneá el código o entrá a <strong>/jugar</strong> con el código de
+            la sala.
+          </p>
+          <div className="mt-8 flex flex-wrap items-end gap-6">
+            <div>
+              <p className="text-sm font-800 uppercase tracking-[0.2em] text-white/70">
+                Código
+              </p>
+              <p className="brand glow-sun text-[clamp(4rem,14vw,8rem)] text-[var(--sun)]">
+                {room.code}
+              </p>
             </div>
-          ) : null}
+            {joinUrl ? (
+              <div className="rounded-[1.5rem] bg-white p-4 shadow-[var(--shadow)]">
+                <QRCodeSVG value={joinUrl} size={180} level="M" includeMargin />
+              </div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            id="host-start-round"
+            className="btn btn-coral mt-10 w-fit text-xl"
+            onClick={onStart}
+            disabled={busy || room.players.length === 0}
+          >
+            {room.players.length === 0
+              ? "Esperando jugadores…"
+              : "¡Empezar primera ronda!"}
+          </button>
         </div>
-        <button
-          type="button"
-          id="host-start-round"
-          className="btn btn-coral mt-10 w-fit text-xl"
-          onClick={onStart}
-          disabled={busy || room.players.length === 0}
-        >
-          {room.players.length === 0
-            ? "Esperando jugadores…"
-            : "¡Empezar primera ronda!"}
-        </button>
       </section>
 
       <aside className="flex flex-col justify-center bg-[rgba(26,107,181,0.12)] px-8 py-10 sm:px-12">
