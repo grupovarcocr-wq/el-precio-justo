@@ -15,9 +15,9 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "El Precio Justo — Té de canastilla",
+  title: "El Precio Justo — Té de Leandro Vargas Corao",
   description:
-    "Juego de adivinar precios en colones para el té de canastilla. TV para el host, celular para los invitados.",
+    "Juego de adivinar precios en colones para el Té de Leandro Vargas Corao. TV para el host, celular para los invitados.",
 };
 
 export default function RootLayout({

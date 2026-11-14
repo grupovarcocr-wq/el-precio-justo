@@ -119,7 +119,7 @@ function JugarInner() {
   if (!playerId || !code) {
     return (
       <main className="tv-shell mx-auto flex w-full max-w-md flex-col justify-center px-5 py-10">
-        <p className="chip w-fit">Invitado</p>
+        <p className="chip w-fit">Té de Leandro Vargas Corao</p>
         <h1 className="brand mt-3 text-5xl text-[var(--teal-deep)]">
           El Precio Justo
         </h1>

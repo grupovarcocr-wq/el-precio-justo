@@ -1,6 +1,6 @@
 # El Precio Justo
 
-Juego tipo *The Price is Right* para un té de canastilla. El host proyecta en la TV; los invitados juegan desde el celular. Precios en colones costarricenses (₡).
+Juego tipo *The Price is Right* para el **Té de Leandro Vargas Corao**. El host proyecta en la TV; los invitados juegan desde el celular. Precios en colones costarricenses (₡).
 
 ## Cómo jugar el día del evento
 

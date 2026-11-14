@@ -160,7 +160,7 @@ function LobbyTV({
   return (
     <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
       <section className="flex flex-col justify-center px-8 py-10 sm:px-14">
-        <p className="chip w-fit">Sala lista</p>
+        <p className="chip w-fit">Té de Leandro Vargas Corao</p>
         <h1 className="brand mt-4 text-[clamp(3.5rem,10vw,7rem)] text-[var(--teal-deep)]">
           El Precio Justo
         </h1>
@@ -196,7 +196,7 @@ function LobbyTV({
         </button>
       </section>
 
-      <aside className="flex flex-col justify-center bg-[rgba(15,122,114,0.12)] px-8 py-10 sm:px-12">
+      <aside className="flex flex-col justify-center bg-[rgba(26,107,181,0.12)] px-8 py-10 sm:px-12">
         <h2 className="brand text-4xl text-[var(--teal-deep)]">Jugadores</h2>
         <ul className="mt-6 space-y-3">
           {room.players.length === 0 ? (
@@ -242,7 +242,7 @@ function GuessingTV({
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: `linear-gradient(90deg, rgba(8,40,45,0.72), rgba(8,40,45,0.35)), url(/productos/${product.imagenProducto})`,
+          backgroundImage: `linear-gradient(90deg, rgba(11,39,68,0.78), rgba(11,61,110,0.38)), url(/productos/${product.imagenProducto})`,
         }}
       />
       <div className="relative z-10 flex min-h-dvh flex-col px-6 py-6 sm:px-12 sm:py-8">
@@ -335,7 +335,7 @@ function RevealTV({
           alt={`Precio de ${product.nombre}`}
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[rgba(8,40,45,0.92)] via-[rgba(8,40,45,0.25)] to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[rgba(11,39,68,0.92)] via-[rgba(11,61,110,0.25)] to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10">
           <p className="brand text-xl text-white/80 sm:text-2xl">
             El Precio Justo
@@ -349,7 +349,7 @@ function RevealTV({
         </div>
       </section>
 
-      <section className="relative z-10 flex flex-col bg-[rgba(244,252,250,0.96)] px-6 py-8 sm:px-10">
+      <section className="relative z-10 flex flex-col bg-[rgba(242,248,253,0.96)] px-6 py-8 sm:px-10">
         <h2 className="brand text-4xl text-[var(--teal-deep)] sm:text-5xl">
           {room.winners && room.winners.length > 0
             ? room.winners.length === 1

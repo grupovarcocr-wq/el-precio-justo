@@ -3,19 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --ink: #132536;
-  --ink-soft: #3a5366;
-  --foam: #eef9f6;
-  --aqua: #7ed6c2;
-  --teal: #0f7a72;
-  --teal-deep: #0a4f4a;
-  --coral: #ff5d6c;
-  --coral-deep: #d93d4e;
-  --sun: #ffd166;
-  --sky: #9fd8ef;
-  --mist: #d7f0ea;
+  /* Baby boy shower: soft sky → navy (CSS names kept for existing class usage) */
+  --ink: #0f2744;
+  --ink-soft: #3d5a7a;
+  --foam: #eef6fc;
+  --aqua: #8ec8ef;
+  --teal: #1a6bb5;
+  --teal-deep: #0b3d6e;
+  --coral: #3b9be8;
+  --coral-deep: #1e6fb8;
+  --sun: #f5c842;
+  --sky: #b8dff7;
+  --mist: #d6ebf8;
   --panel: rgba(255, 255, 255, 0.72);
-  --shadow: 0 18px 50px rgba(19, 37, 54, 0.18);
+  --shadow: 0 18px 50px rgba(15, 39, 68, 0.18);
   --font-display: "Lilita One", system-ui, sans-serif;
   --font-body: "Nunito", system-ui, sans-serif;
 }
@@ -31,10 +32,10 @@ body {
   color: var(--ink);
   font-family: var(--font-body);
   background:
-    radial-gradient(1200px 700px at 10% -10%, rgba(255, 209, 102, 0.45), transparent 55%),
-    radial-gradient(900px 600px at 100% 0%, rgba(159, 216, 239, 0.55), transparent 50%),
-    radial-gradient(800px 500px at 50% 110%, rgba(126, 214, 194, 0.5), transparent 45%),
-    linear-gradient(160deg, #f4fcfa 0%, #e8f6f8 45%, #fff4f1 100%);
+    radial-gradient(1200px 700px at 10% -10%, rgba(184, 223, 247, 0.7), transparent 55%),
+    radial-gradient(900px 600px at 100% 0%, rgba(59, 155, 232, 0.28), transparent 50%),
+    radial-gradient(800px 500px at 50% 110%, rgba(11, 61, 110, 0.18), transparent 45%),
+    linear-gradient(160deg, #f2f8fd 0%, #e3f0fb 48%, #d6e8f8 100%);
   background-attachment: fixed;
 }
 
@@ -127,10 +128,10 @@ input {
 
 @keyframes glowSun {
   from {
-    filter: drop-shadow(0 0 0 rgba(255, 209, 102, 0.2));
+    filter: drop-shadow(0 0 0 rgba(59, 155, 232, 0.25));
   }
   to {
-    filter: drop-shadow(0 0 24px rgba(255, 209, 102, 0.65));
+    filter: drop-shadow(0 0 24px rgba(245, 200, 66, 0.55));
   }
 }
 
@@ -154,21 +155,21 @@ input {
 }
 
 .btn-coral {
-  background: linear-gradient(180deg, #ff7482, var(--coral-deep));
+  background: linear-gradient(180deg, #5eb3f0, var(--coral-deep));
   color: white;
-  box-shadow: 0 10px 24px rgba(217, 61, 78, 0.35);
+  box-shadow: 0 10px 24px rgba(30, 111, 184, 0.38);
 }
 
 .btn-teal {
-  background: linear-gradient(180deg, #15958c, var(--teal-deep));
+  background: linear-gradient(180deg, #2a7fd0, var(--teal-deep));
   color: white;
-  box-shadow: 0 10px 24px rgba(10, 79, 74, 0.3);
+  box-shadow: 0 10px 24px rgba(11, 61, 110, 0.35);
 }
 
 .btn-sun {
-  background: linear-gradient(180deg, #ffe08a, #f0b429);
+  background: linear-gradient(180deg, #ffe08a, #e8b020);
   color: var(--ink);
-  box-shadow: 0 10px 24px rgba(240, 180, 41, 0.35);
+  box-shadow: 0 10px 24px rgba(232, 176, 32, 0.35);
 }
 
 .btn-ghost {
@@ -179,7 +180,7 @@ input {
 
 .field {
   width: 100%;
-  border: 3px solid rgba(15, 122, 114, 0.22);
+  border: 3px solid rgba(26, 107, 181, 0.22);
   background: rgba(255, 255, 255, 0.9);
   border-radius: 1.1rem;
   padding: 1rem 1.1rem;
@@ -190,7 +191,7 @@ input {
 
 .field:focus {
   border-color: var(--teal);
-  box-shadow: 0 0 0 4px rgba(126, 214, 194, 0.45);
+  box-shadow: 0 0 0 4px rgba(142, 200, 239, 0.55);
 }
 
 .chip {

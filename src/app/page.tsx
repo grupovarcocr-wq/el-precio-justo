@@ -38,7 +38,9 @@ export default function HomePage() {
   return (
     <main className="tv-shell px-5 py-8 sm:px-10 sm:py-12">
       <header className="mx-auto w-full max-w-5xl text-center">
-        <p className="chip mx-auto mb-4 slide-up">Té de canastilla · Costa Rica</p>
+        <p className="chip mx-auto mb-4 slide-up">
+          Té de Leandro Vargas Corao · Costa Rica
+        </p>
         <h1 className="brand pop-in text-[clamp(3rem,12vw,6.5rem)] text-[var(--teal-deep)]">
           El Precio Justo
         </h1>
