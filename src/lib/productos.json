@@ -1,0 +1,93 @@
+[
+  {
+    "id": 1,
+    "nombre": "Pañal bebé etapa 1 Fisher-Price 40 unds",
+    "precio": 2800,
+    "imagenProducto": "producto-01.jpeg",
+    "imagenPrecio": "precio-01.jpeg"
+  },
+  {
+    "id": 2,
+    "nombre": "Toallitas húmedas Parent's Choice aroma fresco 100 uds",
+    "precio": 1500,
+    "imagenProducto": "producto-02.jpeg",
+    "imagenPrecio": "precio-02.jpeg"
+  },
+  {
+    "id": 3,
+    "nombre": "Colonia bebé Johnson's Sonrisas 200 ml",
+    "precio": 3880,
+    "imagenProducto": "producto-03.jpeg",
+    "imagenPrecio": "precio-03.jpeg"
+  },
+  {
+    "id": 4,
+    "nombre": "Ungüento Manzatín infantil 235 g",
+    "precio": 2490,
+    "imagenProducto": "producto-04.jpeg",
+    "imagenPrecio": "precio-04.jpeg"
+  },
+  {
+    "id": 5,
+    "nombre": "Aceite Bebyto para bebé con aloe y almendra 200 ml",
+    "precio": 900,
+    "imagenProducto": "producto-05.jpeg",
+    "imagenPrecio": "precio-05.jpeg"
+  },
+  {
+    "id": 6,
+    "nombre": "Colado Agú sabor a frutas doypack 113 g",
+    "precio": 380,
+    "imagenProducto": "producto-06.jpeg",
+    "imagenPrecio": "precio-06.jpeg"
+  },
+  {
+    "id": 7,
+    "nombre": "Set de ropa recién nacido blanco y celeste (5 piezas)",
+    "precio": 25995,
+    "imagenProducto": "producto-07.jpeg",
+    "imagenPrecio": "precio-07.jpeg"
+  },
+  {
+    "id": 8,
+    "nombre": "Tina plegable bebé 78x49x20 cm",
+    "precio": 8500,
+    "imagenProducto": "producto-08.jpeg",
+    "imagenPrecio": "precio-08.jpeg"
+  },
+  {
+    "id": 9,
+    "nombre": "Silla de comer booster Carestino",
+    "precio": 29689,
+    "imagenProducto": "producto-09.jpeg",
+    "imagenPrecio": "precio-09.jpeg"
+  },
+  {
+    "id": 10,
+    "nombre": "Encierro Prinsel colecho gris oscuro",
+    "precio": 45000,
+    "imagenProducto": "producto-10.jpeg",
+    "imagenPrecio": "precio-10.jpeg"
+  },
+  {
+    "id": 11,
+    "nombre": "Silla vibra / bouncer bebé con juguetes",
+    "precio": 27900,
+    "imagenProducto": "producto-11.jpeg",
+    "imagenPrecio": "precio-11.jpeg"
+  },
+  {
+    "id": 12,
+    "nombre": "Coche Graco de 3 ruedas",
+    "precio": 186915,
+    "imagenProducto": "producto-12.jpeg",
+    "imagenPrecio": "precio-12.jpeg"
+  },
+  {
+    "id": 13,
+    "nombre": "Biberón Evenflo Acuario 4 oz",
+    "precio": 1000,
+    "imagenProducto": "producto-13.jpeg",
+    "imagenPrecio": "precio-13.jpeg"
+  }
+]
