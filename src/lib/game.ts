@@ -58,6 +58,8 @@ export type RoomView = {
   phase: Phase;
   productIndex: number;
   productCount: number;
+  /** True when the current round is the reserved sudden-death product. */
+  isTiebreaker: boolean;
   product: PublicProducto | null;
   options: number[] | null;
   timerSeconds: number;
@@ -123,6 +125,56 @@ function productOrderFor(room: RoomRow): number[] {
     return room.product_order;
   }
   return PRODUCTOS.map((p) => p.id);
+}
+
+/** Last shuffled product is held back for a possible tiebreaker. */
+function mainRoundCount(order: number[]): number {
+  return order.length >= 2 ? order.length - 1 : order.length;
+}
+
+function isTiebreakerIndex(order: number[], productIndex: number): boolean {
+  return order.length >= 2 && productIndex === order.length - 1;
+}
+
+/** Two or more players share the highest score (including 0–0). */
+export function topScoresTied(
+  players: { score: number }[],
+): boolean {
+  if (players.length < 2) return false;
+  const top = Math.max(...players.map((p) => p.score));
+  return players.filter((p) => p.score === top).length >= 2;
+}
+
+async function finishRoom(code: string): Promise<void> {
+  await sql(
+    "update rooms set phase = 'finished', options = '{}', round_started_at = null, round_ends_at = null where code = $1",
+    [code],
+  );
+}
+
+/**
+ * After a reveal (or skip), open the next product — or finish.
+ * The last product in the shuffled order is reserved: it only opens
+ * when the leaders are tied after the main rounds.
+ */
+async function advanceAfterRound(room: RoomRow): Promise<void> {
+  const order = productOrderFor(room);
+  const next = room.product_index + 1;
+
+  if (next >= order.length) {
+    await finishRoom(room.code);
+    return;
+  }
+
+  if (isTiebreakerIndex(order, next)) {
+    const players = await listPlayers(room.code);
+    if (!topScoresTied(players)) {
+      await finishRoom(room.code);
+      return;
+    }
+  }
+
+  await openRound(room, next);
 }
 
 export function currentProduct(room: RoomRow) {
@@ -403,16 +455,7 @@ export async function hostAction(
       if (room.phase !== "revealed") {
         throw new Error("Revela primero");
       }
-      const next = room.product_index + 1;
-      const order = productOrderFor(room);
-      if (next >= order.length) {
-        await sql(
-          "update rooms set phase = 'finished', options = '{}', round_started_at = null, round_ends_at = null where code = $1",
-          [room.code],
-        );
-      } else {
-        await openRound(room, next);
-      }
+      await advanceAfterRound(room);
       break;
     }
     case "skip": {
@@ -423,27 +466,13 @@ export async function hostAction(
           "update rooms set phase = 'revealed', round_ends_at = coalesce(round_ends_at, now()) where code = $1",
           [room.code],
         );
-        // Clear unscored guesses? Leave them; scoreRound not called — 0 points.
-        // Actually better: don't score, just move. Reset phase via openRound for next.
       }
       const refreshed = (await getRoom(room.code)) ?? room;
-      const next = refreshed.product_index + 1;
-      const order = productOrderFor(refreshed);
-      if (next >= order.length) {
-        await sql(
-          "update rooms set phase = 'finished', options = '{}', round_started_at = null, round_ends_at = null where code = $1",
-          [room.code],
-        );
-      } else {
-        await openRound(refreshed, next);
-      }
+      await advanceAfterRound(refreshed);
       break;
     }
     case "finish": {
-      await sql(
-        "update rooms set phase = 'finished', options = '{}', round_started_at = null, round_ends_at = null where code = $1",
-        [room.code],
-      );
+      await finishRoom(room.code);
       break;
     }
     case "restart": {
@@ -486,6 +515,9 @@ export async function buildRoomView(
   const players = await listPlayers(room.code);
   const product = currentProduct(room);
   const order = productOrderFor(room);
+  const tiebreaker = isTiebreakerIndex(order, room.product_index);
+  const mainCount = mainRoundCount(order);
+  const productCount = tiebreaker ? order.length : mainCount;
   const revealed = room.phase === "revealed" || room.phase === "finished";
 
   let guesses: GuessRow[] = [];
@@ -541,7 +573,8 @@ export async function buildRoomView(
     code: room.code,
     phase: room.phase,
     productIndex: room.product_index,
-    productCount: order.length,
+    productCount,
+    isTiebreaker: tiebreaker,
     product: product
       ? toPublicProducto(product, revealed && room.phase === "revealed")
       : null,
