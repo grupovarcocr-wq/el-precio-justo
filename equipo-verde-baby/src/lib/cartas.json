@@ -1,0 +1,188 @@
+{
+  "completaLaFrase": [
+    {
+      "id": "cf-01",
+      "prompt": "Pañales ___________."
+    },
+    {
+      "id": "cf-02",
+      "prompt": "Crema para ___________."
+    },
+    {
+      "id": "cf-03",
+      "prompt": "El famoso corte de pelo tipo ___________."
+    },
+    {
+      "id": "cf-04",
+      "prompt": "Canción de cuna: Duérmete mi ___________."
+    },
+    {
+      "id": "cf-05",
+      "prompt": "Leche de ___________."
+    },
+    {
+      "id": "cf-06",
+      "prompt": "Biberón o ___________."
+    },
+    {
+      "id": "cf-07",
+      "prompt": "Babero de ___________."
+    },
+    {
+      "id": "cf-08",
+      "prompt": "Chupones ___________."
+    },
+    {
+      "id": "cf-09",
+      "prompt": "Coche de ___________."
+    },
+    {
+      "id": "cf-10",
+      "prompt": "Baño de ___________."
+    },
+    {
+      "id": "cf-11",
+      "prompt": "Silla de ___________."
+    },
+    {
+      "id": "cf-12",
+      "prompt": "Cuna de ___________."
+    },
+    {
+      "id": "cf-13",
+      "prompt": "Zapatos de ___________."
+    },
+    {
+      "id": "cf-14",
+      "prompt": "Cobija de ___________."
+    }
+  ],
+  "loPrimeroQueViene": [
+    {
+      "id": "lp-01",
+      "prompt": "Menciona un olor característico de un bebé."
+    },
+    {
+      "id": "lp-02",
+      "prompt": "¿Cuál es el regalo más repetido en cualquier baby shower?"
+    },
+    {
+      "id": "lp-03",
+      "prompt": "¿Qué alimento sólido (fruta o verdura) le dan casi todos los papás de primero a un bebé?"
+    },
+    {
+      "id": "lp-04",
+      "prompt": "Menciona una caricatura o personaje infantil clásico que todo bebé termina viendo."
+    },
+    {
+      "id": "lp-05",
+      "prompt": "¿Cuál es el consejo no pedido que más le dan las abuelas o tías a los papás primerizos?"
+    },
+    {
+      "id": "lp-06",
+      "prompt": "¿Qué sonido hace un bebé recién nacido cuando tiene hambre?"
+    },
+    {
+      "id": "lp-07",
+      "prompt": "¿Cuál es la marca de pañales más famosa o recordada en Costa Rica?"
+    },
+    {
+      "id": "lp-08",
+      "prompt": "¿Qué color se asocia tradicionalmente más cuando no se sabe el sexo del bebé?"
+    },
+    {
+      "id": "lp-09",
+      "prompt": "¿Cuál es el síntoma más común cuando a un bebé le van a salir los primeros dientes?"
+    },
+    {
+      "id": "lp-10",
+      "prompt": "¿Qué animal es el protagonista más repetido en los peluches o móviles de cuna?"
+    },
+    {
+      "id": "lp-11",
+      "prompt": "¿Cuál es el lugar de la casa donde se pasa más tiempo cambiando pañales al inicio?"
+    },
+    {
+      "id": "lp-12",
+      "prompt": "¿Qué prenda de ropa de bebé es la que más se ensucia y hay que cambiar al día?"
+    },
+    {
+      "id": "lp-13",
+      "prompt": "¿Cuál es el accesorio que las mamás siempre llevan de más en la pañalera?"
+    }
+  ],
+  "estoOAquello": [
+    {
+      "id": "eo-01",
+      "prompt": "Para vestir al bebé:",
+      "optionA": "Ropa enteriza (body)",
+      "optionB": "De dos piezas (camisa y pantalón)"
+    },
+    {
+      "id": "eo-02",
+      "prompt": "Para calmar el llanto:",
+      "optionA": "Poner música",
+      "optionB": "Hablarle / cantarle al oído"
+    },
+    {
+      "id": "eo-03",
+      "prompt": "¿Qué es mejor regalar en un baby shower?",
+      "optionA": "Ropa de recién nacido (0-3 meses)",
+      "optionB": "Ropa para cuando estén más grandes (6-12 meses)"
+    },
+    {
+      "id": "eo-04",
+      "prompt": "A la hora de bañar al bebé:",
+      "optionA": "Agua tibia",
+      "optionB": "Temperatura ambiente"
+    },
+    {
+      "id": "eo-05",
+      "prompt": "Para salir de viaje con un bebé:",
+      "optionA": "Maleta gigante",
+      "optionB": "Medio carro lleno de chunches"
+    },
+    {
+      "id": "eo-06",
+      "prompt": "¿Prefieren los papás que el bebé…?",
+      "optionA": "Duerma en su propia habitación desde el día uno",
+      "optionB": "Hacer colecho"
+    },
+    {
+      "id": "eo-07",
+      "prompt": "Para limpiar los juguetes o chupones que se caen al suelo:",
+      "optionA": "Lavar con agua y jabón",
+      "optionB": "La regla de los 5 segundos"
+    },
+    {
+      "id": "eo-08",
+      "prompt": "¿Qué causa más estrés a los papás primerizos?",
+      "optionA": "Que no duerma de noche",
+      "optionB": "Que no quiera comer"
+    },
+    {
+      "id": "eo-09",
+      "prompt": "Para salir con un bebé recién nacido:",
+      "optionA": "Coche",
+      "optionB": "Fular / canguro"
+    },
+    {
+      "id": "eo-10",
+      "prompt": "Cuando el bebé llora de noche:",
+      "optionA": "Lo pasas a tu cama",
+      "optionB": "Lo dejas en su cuna"
+    },
+    {
+      "id": "eo-11",
+      "prompt": "Primera palabra que todo el mundo espera que diga el bebé:",
+      "optionA": "Mamá",
+      "optionB": "Papá"
+    },
+    {
+      "id": "eo-12",
+      "prompt": "Para dormir al bebé:",
+      "optionA": "Silencio absoluto",
+      "optionB": "Ruido blanco / música suave"
+    }
+  ]
+}
