@@ -262,11 +262,11 @@ function JugarInner() {
               tone="light"
             />
           </div>
-          <div className="overflow-hidden rounded-[1.6rem] shadow-[var(--shadow)]">
+          <div className="flex max-h-72 items-center justify-center overflow-hidden rounded-[1.6rem] bg-[var(--mist)] shadow-[var(--shadow)]">
             <img
               src={`/productos/${room.product.imagenProducto}`}
               alt={room.product.nombre}
-              className="aspect-[4/3] w-full object-cover bg-[var(--mist)]"
+              className="max-h-72 w-full object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
               }}
@@ -306,11 +306,11 @@ function JugarInner() {
 
       {room.phase === "revealed" && room.product ? (
         <section className="mt-6">
-          <div className="overflow-hidden rounded-[1.6rem] shadow-[var(--shadow)]">
+          <div className="flex max-h-72 items-center justify-center overflow-hidden rounded-[1.6rem] bg-[var(--mist)] shadow-[var(--shadow)]">
             <img
               src={`/productos/${room.product.imagenPrecio ?? room.product.imagenProducto}`}
               alt="Precio revelado"
-              className="aspect-[4/3] w-full object-cover bg-[var(--mist)]"
+              className="max-h-72 w-full object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).src =
                   `/productos/${room.product!.imagenProducto}`;
