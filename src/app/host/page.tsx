@@ -349,13 +349,17 @@ function GuessingTV({
   if (!product) return null;
 
   return (
-    <div className="relative min-h-dvh overflow-hidden">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: `linear-gradient(90deg, rgba(20,31,56,0.86), rgba(27,42,74,0.45)), url(/productos/${product.imagenProducto})`,
+    <div className="relative min-h-dvh overflow-hidden bg-[var(--navy)]">
+      <img
+        src={`/productos/${product.imagenProducto}`}
+        alt=""
+        className="pointer-events-none absolute inset-0 m-auto max-h-[85dvh] max-w-[min(100%,56rem)] object-contain opacity-90"
+        aria-hidden
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = "none";
         }}
       />
+      <div className="absolute inset-0 bg-gradient-to-r from-[rgba(20,31,56,0.92)] via-[rgba(20,31,56,0.55)] to-[rgba(27,42,74,0.35)]" />
       <div className="relative z-10 flex min-h-dvh flex-col px-6 py-6 sm:px-12 sm:py-8">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -470,17 +474,17 @@ function RevealTV({
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="relative min-h-[42vh] overflow-hidden bg-[var(--navy)] lg:min-h-dvh">
+      <section className="relative flex min-h-[42vh] items-center justify-center overflow-hidden bg-[var(--navy)] lg:min-h-dvh">
         <img
           src={`/productos/${product.imagenPrecio ?? product.imagenProducto}`}
           alt={`Precio de ${product.nombre}`}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 m-auto max-h-full max-w-full object-contain p-4 pb-36 sm:p-8 sm:pb-40"
           onError={(e) => {
             (e.target as HTMLImageElement).src =
               `/productos/${product.imagenProducto}`;
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[rgba(20,31,56,0.92)] via-[rgba(27,42,74,0.28)] to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[rgba(20,31,56,0.92)] via-[rgba(27,42,74,0.28)] to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10">
           <p className="brand text-xl text-white/80 sm:text-2xl">
             El Precio Justo
