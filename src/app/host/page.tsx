@@ -331,8 +331,10 @@ function GuessingTV({
               El Precio Justo
             </p>
             <p className="mt-1 font-800 text-[var(--sun)]">
-              Ronda {room.productIndex + 1} / {room.productCount} · Código{" "}
-              {room.code}
+              {room.isTiebreaker
+                ? "Desempate"
+                : `Ronda ${room.productIndex + 1} / ${room.productCount}`}{" "}
+              · Código {room.code}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -425,7 +427,14 @@ function RevealTV({
 }) {
   const product = room.product;
   if (!product || product.precio == null) return null;
-  const isLast = room.productIndex >= room.productCount - 1;
+  const top = Math.max(0, ...room.players.map((p) => p.score));
+  const leadersTied =
+    room.players.length >= 2 &&
+    room.players.filter((p) => p.score === top).length >= 2;
+  const onLastMain =
+    !room.isTiebreaker && room.productIndex >= room.productCount - 1;
+  const needsTiebreaker = onLastMain && leadersTied;
+  const isFinal = room.isTiebreaker || (onLastMain && !leadersTied);
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.05fr_0.95fr]">
@@ -443,6 +452,7 @@ function RevealTV({
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10">
           <p className="brand text-xl text-white/80 sm:text-2xl">
             El Precio Justo
+            {room.isTiebreaker ? " · Desempate" : ""}
           </p>
           <p className="brand glow-sun mt-2 text-[clamp(3.2rem,9vw,6.5rem)] leading-none text-[var(--sun)]">
             {formatColones(product.precio)}
@@ -499,7 +509,7 @@ function RevealTV({
         </div>
 
         <div className="mt-auto flex flex-wrap gap-3 pt-8">
-          {isLast ? (
+          {isFinal ? (
             <button
               type="button"
               className="btn btn-coral text-lg"
@@ -515,7 +525,7 @@ function RevealTV({
               onClick={onNext}
               disabled={busy}
             >
-              Siguiente producto
+              {needsTiebreaker ? "Ronda de desempate" : "Siguiente producto"}
             </button>
           )}
         </div>

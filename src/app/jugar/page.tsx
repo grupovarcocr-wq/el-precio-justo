@@ -236,7 +236,9 @@ function JugarInner() {
         <section className="mt-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="font-800 text-[var(--ink-soft)]">
-              Ronda {room.productIndex + 1}/{room.productCount}
+              {room.isTiebreaker
+                ? "Desempate"
+                : `Ronda ${room.productIndex + 1}/${room.productCount}`}
             </p>
             <CountdownRing
               remainingMs={remainingMs}
