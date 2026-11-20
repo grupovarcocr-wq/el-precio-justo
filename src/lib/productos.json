@@ -2,7 +2,7 @@
   {
     "id": 1,
     "nombre": "Pañal bebé etapa 1 Fisher-Price 40 unds",
-    "precio": 2800,
+    "precio": 2500,
     "imagenProducto": "producto-01.jpeg",
     "imagenPrecio": "precio-01.jpeg"
   },
@@ -89,5 +89,131 @@
     "precio": 1000,
     "imagenProducto": "producto-13.jpeg",
     "imagenPrecio": "precio-13.jpeg"
+  },
+  {
+    "id": 14,
+    "nombre": "Crema Pañalito para bebé con aceite de oliva 235 g",
+    "precio": 3030,
+    "imagenProducto": "producto-14.jpeg",
+    "imagenPrecio": "precio-14.jpeg"
+  },
+  {
+    "id": 15,
+    "nombre": "Galleta de arroz Hot Kid Baby Mum-Mum manzana 50 g",
+    "precio": 3030,
+    "imagenProducto": "producto-15.jpeg",
+    "imagenPrecio": "precio-15.jpeg"
+  },
+  {
+    "id": 16,
+    "nombre": "Vaselina bebé Johnson's Original 100 g",
+    "precio": 2650,
+    "imagenProducto": "producto-16.jpeg",
+    "imagenPrecio": "precio-16.jpeg"
+  },
+  {
+    "id": 17,
+    "nombre": "Colado Gerber Orgánico manzana 100 g",
+    "precio": 690,
+    "imagenProducto": "producto-17.jpeg",
+    "imagenPrecio": "precio-17.jpeg"
+  },
+  {
+    "id": 18,
+    "nombre": "Silla mecedora bebé",
+    "precio": 17000,
+    "imagenProducto": "producto-18.jpeg",
+    "imagenPrecio": "precio-18.jpeg"
+  },
+  {
+    "id": 19,
+    "nombre": "Extractor manual de leche con biberón",
+    "precio": 2600,
+    "imagenProducto": "producto-19.jpeg",
+    "imagenPrecio": "precio-19.jpeg"
+  },
+  {
+    "id": 21,
+    "nombre": "Enfamil Confort Premium etapa 1 Promental 1.65 kg",
+    "precio": 51995,
+    "imagenProducto": "producto-21.jpeg",
+    "imagenPrecio": "precio-21.jpeg"
+  },
+  {
+    "id": 22,
+    "nombre": "Cortauñas con luz para bebé Safety",
+    "precio": 5490,
+    "imagenProducto": "producto-22.jpeg",
+    "imagenPrecio": "precio-22.jpeg"
+  },
+  {
+    "id": 23,
+    "nombre": "Set chupetas ultra air nocturnas niño 6-18m Avent",
+    "precio": 5990,
+    "imagenProducto": "producto-23.jpeg",
+    "imagenPrecio": "precio-23.jpeg"
+  },
+  {
+    "id": 24,
+    "nombre": "Biberón anticólicos 11 oz Avent",
+    "precio": 7990,
+    "imagenProducto": "producto-24.jpeg",
+    "imagenPrecio": "precio-24.jpeg"
+  },
+  {
+    "id": 25,
+    "nombre": "Masajeador de encías 360° con estuche Buba",
+    "precio": 1990,
+    "imagenProducto": "producto-25.jpeg",
+    "imagenPrecio": "precio-25.jpeg"
+  },
+  {
+    "id": 26,
+    "nombre": "Protectores para pezones mediano Avent",
+    "precio": 8990,
+    "imagenProducto": "producto-26.jpeg",
+    "imagenPrecio": "precio-26.jpeg"
+  },
+  {
+    "id": 27,
+    "nombre": "Bacinilla para bebé surtida 6-36m",
+    "precio": 3500,
+    "imagenProducto": "producto-27.jpeg",
+    "imagenPrecio": "precio-27.jpeg"
+  },
+  {
+    "id": 28,
+    "nombre": "Brazalete seguridad bebé surtido Genial",
+    "precio": 4500,
+    "imagenProducto": "producto-28.jpeg",
+    "imagenPrecio": "precio-28.jpeg"
+  },
+  {
+    "id": 29,
+    "nombre": "Mordedor silicón control remoto bebé +6m",
+    "precio": 2500,
+    "imagenProducto": "producto-29.jpeg",
+    "imagenPrecio": "precio-29.jpeg"
+  },
+  {
+    "id": 30,
+    "nombre": "Protector plástico tomacorriente seguridad bebé",
+    "precio": 1700,
+    "imagenProducto": "producto-30.jpeg",
+    "imagenPrecio": "precio-30.jpeg"
+  },
+  {
+    "id": 31,
+    "nombre": "Coche 4 en 1 DLX Modes Nest Sullivan Graco",
+    "precio": 447995,
+    "imagenProducto": "producto-31.jpeg",
+    "imagenPrecio": "precio-31.jpeg"
+  },
+  {
+    "id": 32,
+    "nombre": "Silla para comer 3 en 1 gris Born",
+    "precio": 118995,
+    "imagenProducto": "producto-32.jpeg",
+    "imagenPrecio": "precio-32.jpeg"
   }
 ]
