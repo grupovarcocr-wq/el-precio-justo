@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RoomView } from "./game";
 
+/** Poll result when the host deleted the room. */
+export const ROOM_GONE = "ROOM_GONE";
+
 export function useRoom(
   code: string | null,
   opts: { hostToken?: string | null; playerId?: string | null; intervalMs?: number } = {},
@@ -25,7 +28,12 @@ export function useRoom(
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error ?? "Error de conexión");
+      if (res.status === 404) {
+        setRoom(null);
+        setError(ROOM_GONE);
+      } else {
+        setError(data.error ?? "Error de conexión");
+      }
       setLoading(false);
       return;
     }
