@@ -14,7 +14,11 @@ export default function HomePage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/rooms", { method: "POST" });
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timerSeconds: 20 }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error");
       sessionStorage.setItem(`host:${data.code}`, data.hostToken);
@@ -38,30 +42,43 @@ export default function HomePage() {
   return (
     <main className="relative min-h-dvh overflow-hidden">
       <div
-        className="absolute inset-0 scale-105 bg-cover bg-[center_28%] sm:bg-center"
+        className="absolute inset-0 scale-105 bg-cover bg-[center_28%] opacity-40 sm:bg-center"
         style={{ backgroundImage: "url(/branding/leandro-eco.jpg)" }}
         aria-hidden
       />
-      {/* Soft navy wash — keeps the face clear of UI */}
       <div
-        className="absolute inset-0 bg-gradient-to-t from-[#061526] via-[#0b2744]/72 to-[#0b3d6e]/15"
+        className="absolute inset-0 bg-gradient-to-t from-[#1b2a4a] via-[#1b2a4a]/75 to-[#f5f0e6]/35"
         aria-hidden
       />
       <div
-        className="absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-[#061526] via-[#061526]/88 to-transparent"
+        className="absolute inset-x-0 bottom-0 h-[62%] bg-gradient-to-t from-[#141f38] via-[#1b2a4a]/90 to-transparent"
+        aria-hidden
+      />
+
+      <img
+        src="/branding/leon-bebe.png"
+        alt=""
+        className="pointer-events-none absolute right-[-6%] top-[6%] z-[5] w-[42%] max-w-[220px] rotate-6 drop-shadow-lg sm:right-[6%] sm:top-[8%] sm:w-[180px]"
         aria-hidden
       />
 
       <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-5xl flex-col justify-end px-5 pb-8 pt-16 sm:px-10 sm:pb-12">
         <header className="slide-up text-left">
-          <h1 className="brand pop-in text-[clamp(2.6rem,9vw,5.2rem)] leading-[0.92] text-white">
-            Té de Leandro Vargas Corao
+          <p className="chip w-fit border-white/30 bg-white/15 text-white/90">
+            Scrapbook · colones ₡
+          </p>
+          <h1 className="brand pop-in mt-3 text-[clamp(2.4rem,8vw,4.6rem)] leading-[0.92] text-white">
+            Té de{" "}
+            <span className="script text-[1.15em] text-[var(--sun)]">
+              Leandro Vargas Corao
+            </span>
           </h1>
-          <p className="brand mt-3 text-[clamp(1.8rem,5vw,3rem)] text-[var(--sky)]">
+          <p className="brand mt-3 text-[clamp(1.7rem,4.5vw,2.7rem)] text-[var(--kraft)]">
             El Precio Justo
           </p>
           <p className="mt-3 max-w-xl text-base font-700 text-white/85 sm:text-lg">
-            El host proyecta en la TV. Los invitados adivinan desde el celular.
+            El host proyecta en la TV. Los invitados eligen entre 4 precios en
+            el celular — más rápido, más puntos.
           </p>
         </header>
 
@@ -81,11 +98,11 @@ export default function HomePage() {
 
           <form
             onSubmit={goPlay}
-            className="pop-in flex min-h-[120px] flex-col justify-between rounded-[1.6rem] bg-white/92 p-5 shadow-[var(--shadow)] backdrop-blur"
+            className="pop-in paper-panel flex min-h-[120px] flex-col justify-between p-5"
             style={{ animationDelay: "80ms" }}
           >
             <div>
-              <h2 className="brand text-3xl text-[var(--teal-deep)] sm:text-4xl">
+              <h2 className="brand text-3xl text-[var(--navy)] sm:text-4xl">
                 Quiero jugar
               </h2>
               <p className="mt-1 text-sm font-700 text-[var(--ink-soft)]">

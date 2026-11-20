@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Lilita_One, Nunito } from "next/font/google";
+import { Caveat, Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
 
-const lilita = Lilita_One({
-  weight: "400",
+const fredoka = Fredoka({
   subsets: ["latin"],
-  variable: "--font-lilita",
+  weight: ["500", "600", "700"],
+  variable: "--font-fredoka",
 });
 
 const nunito = Nunito({
@@ -14,10 +14,16 @@ const nunito = Nunito({
   variable: "--font-nunito",
 });
 
+const caveat = Caveat({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-caveat",
+});
+
 export const metadata: Metadata = {
   title: "El Precio Justo — Té de Leandro Vargas Corao",
   description:
-    "Juego de adivinar precios en colones para el Té de Leandro Vargas Corao. TV para el host, celular para los invitados.",
+    "Juego tipo Kahoot para adivinar precios en colones. Té de Leandro Vargas Corao — TV para el host, celular para los invitados.",
 };
 
 export default function RootLayout({
@@ -27,11 +33,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${lilita.variable} ${nunito.variable} antialiased`}>
+      <body
+        className={`${fredoka.variable} ${nunito.variable} ${caveat.variable} antialiased`}
+      >
         <style>{`
           :root {
-            --font-display: var(--font-lilita), system-ui, sans-serif;
+            --font-display: var(--font-fredoka), system-ui, sans-serif;
             --font-body: var(--font-nunito), system-ui, sans-serif;
+            --font-script: var(--font-caveat), cursive;
           }
         `}</style>
         {children}
