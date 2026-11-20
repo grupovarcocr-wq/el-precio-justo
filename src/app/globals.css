@@ -3,22 +3,28 @@
 @tailwind utilities;
 
 :root {
-  /* Baby boy shower: soft sky → navy (CSS names kept for existing class usage) */
-  --ink: #0f2744;
-  --ink-soft: #3d5a7a;
-  --foam: #eef6fc;
-  --aqua: #8ec8ef;
-  --teal: #1a6bb5;
-  --teal-deep: #0b3d6e;
-  --coral: #3b9be8;
-  --coral-deep: #1e6fb8;
-  --sun: #f5c842;
-  --sky: #b8dff7;
-  --mist: #d6ebf8;
-  --panel: rgba(255, 255, 255, 0.72);
-  --shadow: 0 18px 50px rgba(15, 39, 68, 0.18);
-  --font-display: "Lilita One", system-ui, sans-serif;
+  /* Invitación Leandro: cream + kraft + navy + brown + soft gold */
+  --ink: #1b2a4a;
+  --ink-soft: #5c4a3a;
+  --foam: #f7f2e8;
+  --aqua: #dcc9a4;
+  --teal: #1b2a4a;
+  --teal-deep: #141f38;
+  --coral: #6b4a2e;
+  --coral-deep: #5c3d24;
+  --sun: #e0c04a;
+  --sky: #c4a574;
+  --mist: #ebe3d4;
+  --kraft: #c4a574;
+  --cream: #f5f0e6;
+  --navy: #1b2a4a;
+  --brown: #6b4a2e;
+  --gold: #e0c04a;
+  --panel: rgba(245, 240, 230, 0.88);
+  --shadow: 0 16px 40px rgba(27, 42, 74, 0.16);
+  --font-display: "Fredoka", system-ui, sans-serif;
   --font-body: "Nunito", system-ui, sans-serif;
+  --font-script: "Caveat", cursive;
 }
 
 * {
@@ -31,11 +37,19 @@ body {
   min-height: 100%;
   color: var(--ink);
   font-family: var(--font-body);
-  background:
-    radial-gradient(1200px 700px at 10% -10%, rgba(184, 223, 247, 0.7), transparent 55%),
-    radial-gradient(900px 600px at 100% 0%, rgba(59, 155, 232, 0.28), transparent 50%),
-    radial-gradient(800px 500px at 50% 110%, rgba(11, 61, 110, 0.18), transparent 45%),
-    linear-gradient(160deg, #f2f8fd 0%, #e3f0fb 48%, #d6e8f8 100%);
+  background-color: var(--cream);
+  background-image:
+    linear-gradient(rgba(27, 42, 74, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(27, 42, 74, 0.035) 1px, transparent 1px),
+    radial-gradient(900px 500px at 8% -5%, rgba(196, 165, 116, 0.35), transparent 55%),
+    radial-gradient(700px 480px at 100% 0%, rgba(224, 192, 74, 0.18), transparent 50%),
+    linear-gradient(165deg, #f7f2e8 0%, #efe6d6 48%, #e8dcc8 100%);
+  background-size:
+    28px 28px,
+    28px 28px,
+    auto,
+    auto,
+    auto;
   background-attachment: fixed;
 }
 
@@ -44,11 +58,10 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.35;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.7) 0 2px, transparent 3px),
-    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.55) 0 1.5px, transparent 2.5px);
-  background-size: 140px 140px, 90px 90px;
+  opacity: 0.45;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(196, 165, 116, 0.22) 0 40%, transparent 42%),
+    radial-gradient(circle at 88% 78%, rgba(27, 42, 74, 0.08) 0 35%, transparent 38%);
   z-index: 0;
 }
 
@@ -64,8 +77,14 @@ input {
 
 .brand {
   font-family: var(--font-display);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   line-height: 0.95;
+}
+
+.script {
+  font-family: var(--font-script);
+  font-weight: 700;
+  line-height: 0.9;
 }
 
 .tv-shell {
@@ -128,10 +147,10 @@ input {
 
 @keyframes glowSun {
   from {
-    filter: drop-shadow(0 0 0 rgba(59, 155, 232, 0.25));
+    filter: drop-shadow(0 0 0 rgba(224, 192, 74, 0.2));
   }
   to {
-    filter: drop-shadow(0 0 24px rgba(245, 200, 66, 0.55));
+    filter: drop-shadow(0 0 18px rgba(224, 192, 74, 0.55));
   }
 }
 
@@ -155,33 +174,33 @@ input {
 }
 
 .btn-coral {
-  background: linear-gradient(180deg, #5eb3f0, var(--coral-deep));
+  background: linear-gradient(180deg, #7a5638, var(--coral-deep));
   color: white;
-  box-shadow: 0 10px 24px rgba(30, 111, 184, 0.38);
+  box-shadow: 0 10px 24px rgba(92, 61, 36, 0.35);
 }
 
 .btn-teal {
-  background: linear-gradient(180deg, #2a7fd0, var(--teal-deep));
+  background: linear-gradient(180deg, #2a3d66, var(--navy));
   color: white;
-  box-shadow: 0 10px 24px rgba(11, 61, 110, 0.35);
+  box-shadow: 0 10px 24px rgba(27, 42, 74, 0.35);
 }
 
 .btn-sun {
-  background: linear-gradient(180deg, #ffe08a, #e8b020);
+  background: linear-gradient(180deg, #f0d56a, #c9a62e);
   color: var(--ink);
-  box-shadow: 0 10px 24px rgba(232, 176, 32, 0.35);
+  box-shadow: 0 10px 24px rgba(201, 166, 46, 0.35);
 }
 
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(245, 240, 230, 0.75);
   color: var(--ink);
-  border: 2px solid rgba(19, 37, 54, 0.08);
+  border: 2px solid rgba(27, 42, 74, 0.12);
 }
 
 .field {
   width: 100%;
-  border: 3px solid rgba(26, 107, 181, 0.22);
-  background: rgba(255, 255, 255, 0.9);
+  border: 3px dashed rgba(27, 42, 74, 0.28);
+  background: rgba(255, 252, 245, 0.95);
   border-radius: 1.1rem;
   padding: 1rem 1.1rem;
   font-size: 1.25rem;
@@ -190,8 +209,9 @@ input {
 }
 
 .field:focus {
-  border-color: var(--teal);
-  box-shadow: 0 0 0 4px rgba(142, 200, 239, 0.55);
+  border-color: var(--navy);
+  border-style: solid;
+  box-shadow: 0 0 0 4px rgba(196, 165, 116, 0.45);
 }
 
 .chip {
@@ -200,7 +220,60 @@ input {
   gap: 0.4rem;
   padding: 0.35rem 0.8rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 252, 245, 0.85);
+  border: 1px dashed rgba(27, 42, 74, 0.2);
   font-weight: 800;
   font-size: 0.95rem;
+}
+
+.paper-panel {
+  background: rgba(255, 252, 245, 0.9);
+  border: 2px dashed rgba(27, 42, 74, 0.18);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+.torn-navy {
+  background: var(--navy);
+  color: var(--cream);
+  clip-path: polygon(
+    0% 4%,
+    3% 0%,
+    8% 5%,
+    14% 1%,
+    22% 6%,
+    30% 0%,
+    38% 5%,
+    48% 1%,
+    56% 6%,
+    65% 0%,
+    74% 5%,
+    82% 1%,
+    90% 6%,
+    96% 2%,
+    100% 5%,
+    100% 100%,
+    0% 100%
+  );
+}
+
+.option-btn {
+  appearance: none;
+  border: 3px solid rgba(255, 252, 245, 0.55);
+  border-radius: 1.2rem;
+  padding: 1rem 0.75rem;
+  font-weight: 900;
+  font-size: 1.35rem;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease;
+  box-shadow: 0 10px 22px rgba(27, 42, 74, 0.22);
+}
+
+.option-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.option-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

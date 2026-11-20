@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { CountdownRing, OPTION_STYLES, useCountdown } from "@/lib/Countdown";
 import { formatColones } from "@/lib/productos";
 import { useRoom } from "@/lib/useRoom";
 
@@ -15,7 +16,6 @@ function JugarInner() {
   const [name, setName] = useState("");
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState<string | null>(null);
-  const [guess, setGuess] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [sentForProduct, setSentForProduct] = useState<number | null>(null);
@@ -39,8 +39,16 @@ function JugarInner() {
 
   const { room, error, refresh } = useRoom(code, {
     playerId,
-    intervalMs: 1100,
+    intervalMs: 800,
   });
+
+  const remainingMs = useCountdown(room?.roundEndsAt, room?.serverNow);
+
+  useEffect(() => {
+    if (room?.phase === "guessing" && remainingMs === 0 && room.roundEndsAt) {
+      void refresh();
+    }
+  }, [remainingMs, room?.phase, room?.roundEndsAt, refresh]);
 
   const myGuessed = useMemo(() => {
     if (!room || !playerId) return false;
@@ -50,7 +58,6 @@ function JugarInner() {
   useEffect(() => {
     if (room?.phase === "guessing" && room.product) {
       if (sentForProduct !== room.product.id) {
-        setGuess("");
         setMsg(null);
       }
     }
@@ -88,12 +95,10 @@ function JugarInner() {
     }
   }
 
-  async function sendGuess(e: React.FormEvent) {
-    e.preventDefault();
+  async function sendChoice(amount: number) {
     if (!code || !playerId || !room?.product) return;
-    const amount = Number(String(guess).replace(/[^\d]/g, ""));
-    if (!Number.isFinite(amount) || amount < 0) {
-      setMsg("Escribe un precio válido en colones");
+    if (remainingMs <= 0) {
+      setMsg("Se acabó el tiempo");
       return;
     }
     setBusy(true);
@@ -119,8 +124,14 @@ function JugarInner() {
   if (!playerId || !code) {
     return (
       <main className="tv-shell mx-auto flex w-full max-w-md flex-col justify-center px-5 py-10">
+        <img
+          src="/branding/leon-bebe.png"
+          alt=""
+          className="mb-3 w-24 self-center"
+          aria-hidden
+        />
         <p className="chip w-fit">Té de Leandro Vargas Corao</p>
-        <h1 className="brand mt-3 text-5xl text-[var(--teal-deep)]">
+        <h1 className="brand mt-3 text-5xl text-[var(--navy)]">
           El Precio Justo
         </h1>
         <p className="mt-2 font-700 text-[var(--ink-soft)]">
@@ -157,9 +168,7 @@ function JugarInner() {
           </button>
         </form>
         {msg ? (
-          <p className="mt-4 text-center font-800 text-[var(--coral-deep)]">
-            {msg}
-          </p>
+          <p className="mt-4 text-center font-800 text-[var(--brown)]">{msg}</p>
         ) : null}
       </main>
     );
@@ -168,7 +177,7 @@ function JugarInner() {
   if (error && !room) {
     return (
       <main className="tv-shell grid place-items-center p-6">
-        <p className="font-800 text-[var(--coral-deep)]">{error}</p>
+        <p className="font-800 text-[var(--brown)]">{error}</p>
       </main>
     );
   }
@@ -176,18 +185,18 @@ function JugarInner() {
   if (!room) {
     return (
       <main className="tv-shell grid place-items-center p-6">
-        <p className="brand text-3xl text-[var(--teal-deep)]">Conectando…</p>
+        <p className="brand text-3xl text-[var(--navy)]">Conectando…</p>
       </main>
     );
   }
+
+  const myResult = room.results?.find((r) => r.playerId === playerId);
 
   return (
     <main className="tv-shell mx-auto w-full max-w-lg px-5 py-6">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <p className="brand text-3xl text-[var(--teal-deep)]">
-            El Precio Justo
-          </p>
+          <p className="brand text-3xl text-[var(--navy)]">El Precio Justo</p>
           <p className="font-800 text-[var(--ink-soft)]">
             Hola {playerName} · Sala {room.code}
           </p>
@@ -199,19 +208,22 @@ function JugarInner() {
 
       {room.phase === "lobby" ? (
         <section className="mt-10 text-center">
-          <div className="pulse-soft mx-auto mb-4 h-16 w-16 rounded-full bg-[var(--aqua)]" />
-          <h2 className="brand text-4xl text-[var(--teal-deep)]">
+          <img
+            src="/branding/leon-bebe.png"
+            alt=""
+            className="mx-auto mb-3 w-24 pulse-soft"
+            aria-hidden
+          />
+          <h2 className="brand text-4xl text-[var(--navy)]">
             Esperando al host…
           </h2>
           <p className="mt-2 font-700 text-[var(--ink-soft)]">
-            La ronda empieza cuando el host lo diga en la TV.
+            Cuando empiece, vas a ver 4 precios. Tocá el correcto — más rápido,
+            más puntos.
           </p>
           <ul className="mt-6 space-y-2 text-left">
             {room.players.map((p) => (
-              <li
-                key={p.id}
-                className="rounded-xl bg-white/75 px-4 py-2 font-800"
-              >
+              <li key={p.id} className="paper-panel px-4 py-2 font-800">
                 {p.name}
                 {p.id === playerId ? " (vos)" : ""}
               </li>
@@ -221,54 +233,56 @@ function JugarInner() {
       ) : null}
 
       {room.phase === "guessing" && room.product ? (
-        <section className="mt-6">
+        <section className="mt-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="font-800 text-[var(--ink-soft)]">
+              Ronda {room.productIndex + 1}/{room.productCount}
+            </p>
+            <CountdownRing
+              remainingMs={remainingMs}
+              totalSeconds={room.timerSeconds}
+              size="sm"
+              tone="light"
+            />
+          </div>
           <div className="overflow-hidden rounded-[1.6rem] shadow-[var(--shadow)]">
             <img
               src={`/productos/${room.product.imagenProducto}`}
               alt={room.product.nombre}
-              className="aspect-[4/3] w-full object-cover"
+              className="aspect-[4/3] w-full object-cover bg-[var(--mist)]"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
             />
           </div>
-          <h2 className="brand mt-4 text-3xl leading-tight text-[var(--teal-deep)]">
+          <h2 className="brand mt-4 text-3xl leading-tight text-[var(--navy)]">
             {room.product.nombre}
           </h2>
           <p className="mt-1 font-700 text-[var(--ink-soft)]">
-            ¿Cuánto cuesta? Escribí en colones (₡).
+            Tocá el precio correcto (₡).
           </p>
 
           {myGuessed ? (
-            <div className="mt-6 rounded-[1.4rem] bg-white/80 p-5 text-center">
-              <p className="brand text-3xl text-[var(--teal)]">¡Listo!</p>
+            <div className="mt-6 paper-panel p-5 text-center">
+              <p className="brand text-3xl text-[var(--navy)]">¡Listo!</p>
               <p className="mt-2 font-700 text-[var(--ink-soft)]">
                 Esperá la revelación en la TV.
               </p>
             </div>
           ) : (
-            <form onSubmit={sendGuess} className="mt-5 space-y-3">
-              <div className="relative">
-                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-900 text-[var(--teal)]">
-                  ₡
-                </span>
-                <input
-                  className="field pl-12 text-3xl tracking-wide"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={guess}
-                  onChange={(e) =>
-                    setGuess(e.target.value.replace(/[^\d]/g, ""))
-                  }
-                  placeholder="0"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                className="btn btn-coral w-full text-xl"
-                disabled={busy}
-              >
-                Enviar apuesta
-              </button>
-            </form>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {(room.options ?? []).map((opt, i) => (
+                <button
+                  key={opt}
+                  type="button"
+                  className={`option-btn ${OPTION_STYLES[i % 4]}`}
+                  disabled={busy || remainingMs <= 0}
+                  onClick={() => void sendChoice(opt)}
+                >
+                  {formatColones(opt)}
+                </button>
+              ))}
+            </div>
           )}
         </section>
       ) : null}
@@ -279,34 +293,52 @@ function JugarInner() {
             <img
               src={`/productos/${room.product.imagenPrecio ?? room.product.imagenProducto}`}
               alt="Precio revelado"
-              className="aspect-[4/3] w-full object-cover"
+              className="aspect-[4/3] w-full object-cover bg-[var(--mist)]"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  `/productos/${room.product!.imagenProducto}`;
+              }}
             />
           </div>
-          <p className="brand mt-4 text-5xl text-[var(--coral)]">
+          <p className="brand mt-4 text-5xl text-[var(--brown)]">
             {formatColones(room.product.precio ?? 0)}
           </p>
-          <h2 className="mt-2 text-2xl font-900 text-[var(--teal-deep)]">
+          {myResult ? (
+            <p
+              className={`mt-2 text-xl font-900 ${
+                myResult.correct ? "text-[var(--navy)]" : "text-[var(--ink-soft)]"
+              }`}
+            >
+              {myResult.correct
+                ? `¡Correcto! +${myResult.points} pts`
+                : `Incorrecto · 0 pts (elegiste ${formatColones(myResult.amount)})`}
+            </p>
+          ) : (
+            <p className="mt-2 font-700 text-[var(--ink-soft)]">
+              No enviaste respuesta esta ronda.
+            </p>
+          )}
+          <h2 className="mt-3 text-2xl font-900 text-[var(--navy)]">
             {room.winners && room.winners.length > 0
               ? room.winners.length === 1
-                ? `Gana ${room.winners[0]}`
+                ? `Más puntos: ${room.winners[0]}`
                 : `Empate: ${room.winners.join(", ")}`
-              : "Sin ganadores"}
+              : "Sin aciertos"}
           </h2>
           <ol className="mt-4 space-y-2">
             {(room.results ?? []).map((r) => (
               <li
                 key={r.playerId}
                 className={`flex justify-between rounded-xl px-3 py-2 font-800 ${
-                  r.winner ? "bg-[var(--sun)]/70" : "bg-white/75"
+                  r.winner ? "bg-[var(--sun)]/70" : "bg-white/80"
                 }`}
               >
                 <span>
                   {r.name}
                   {r.playerId === playerId ? " (vos)" : ""}
+                  {r.correct ? " ✓" : ""}
                 </span>
-                <span>
-                  {formatColones(r.amount)} · Δ {formatColones(r.diff)}
-                </span>
+                <span>+{r.points}</span>
               </li>
             ))}
           </ol>
@@ -318,14 +350,14 @@ function JugarInner() {
 
       {room.phase === "finished" ? (
         <section className="mt-8">
-          <h2 className="brand text-4xl text-[var(--coral)]">Ranking final</h2>
+          <h2 className="brand text-4xl text-[var(--brown)]">Ranking final</h2>
           <ol className="mt-5 space-y-2">
             {[...room.players]
               .sort((a, b) => b.score - a.score)
               .map((p, i) => (
                 <li
                   key={p.id}
-                  className="flex justify-between rounded-xl bg-white/80 px-4 py-3 text-lg font-900"
+                  className="paper-panel flex justify-between px-4 py-3 text-lg font-900"
                 >
                   <span>
                     {i + 1}. {p.name}
@@ -339,9 +371,7 @@ function JugarInner() {
       ) : null}
 
       {msg ? (
-        <p className="mt-5 text-center font-800 text-[var(--teal-deep)]">
-          {msg}
-        </p>
+        <p className="mt-5 text-center font-800 text-[var(--navy)]">{msg}</p>
       ) : null}
     </main>
   );
@@ -352,7 +382,7 @@ export default function JugarPage() {
     <Suspense
       fallback={
         <main className="tv-shell grid place-items-center p-6">
-          <p className="brand text-3xl text-[var(--teal-deep)]">Cargando…</p>
+          <p className="brand text-3xl text-[var(--navy)]">Cargando…</p>
         </main>
       }
     >
