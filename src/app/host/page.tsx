@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CountdownRing, OPTION_STYLES, useCountdown } from "@/lib/Countdown";
 import { formatColones, TIMER_CHOICES } from "@/lib/productos";
-import { useRoom } from "@/lib/useRoom";
+import { ROOM_GONE, useRoom } from "@/lib/useRoom";
 import type { RoomView } from "@/lib/game";
 
 function HostInner() {
@@ -99,6 +99,11 @@ function HostInner() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error");
+      if (data?.cancelled) {
+        sessionStorage.removeItem(`host:${roomCode}`);
+        router.replace("/");
+        return;
+      }
       setRoom(data as RoomView);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Acción falló");
@@ -107,10 +112,28 @@ function HostInner() {
     }
   }
 
-  if (!room && (busy || !error)) {
+  async function cancelGame() {
+    const ok = window.confirm(
+      "¿Eliminar esta partida? Los jugadores saldrán y todos volverán al inicio.",
+    );
+    if (!ok) return;
+    await act("cancel");
+  }
+
+  useEffect(() => {
+    if (error === ROOM_GONE) {
+      const roomCode = code ?? codeParam;
+      if (roomCode) sessionStorage.removeItem(`host:${roomCode}`);
+      router.replace("/");
+    }
+  }, [error, code, codeParam, router]);
+
+  if (!room && (busy || !error || error === ROOM_GONE)) {
     return (
       <main className="tv-shell grid place-items-center p-8">
-        <p className="brand text-4xl text-[var(--navy)]">Preparando sala…</p>
+        <p className="brand text-4xl text-[var(--navy)]">
+          {error === ROOM_GONE ? "Volviendo al inicio…" : "Preparando sala…"}
+        </p>
       </main>
     );
   }
@@ -129,6 +152,15 @@ function HostInner() {
 
   return (
     <main className="tv-shell">
+      <button
+        type="button"
+        className="fixed right-4 top-4 z-30 rounded-full border border-[var(--brown)]/25 bg-[var(--cream)]/95 px-4 py-2 text-sm font-900 text-[var(--brown)] shadow hover:bg-white disabled:opacity-60"
+        onClick={() => void cancelGame()}
+        disabled={busy}
+      >
+        Cancelar partida
+      </button>
+
       {room.phase === "lobby" ? (
         <LobbyTV
           room={room}

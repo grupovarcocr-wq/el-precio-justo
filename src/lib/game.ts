@@ -407,14 +407,15 @@ export type HostAction =
   | "skip"
   | "restart"
   | "finish"
-  | "config";
+  | "config"
+  | "cancel";
 
 export async function hostAction(
   code: string,
   hostToken: string,
   action: HostAction,
   opts: { timerSeconds?: number } = {},
-): Promise<RoomRow> {
+): Promise<RoomRow | null> {
   let room = await getRoom(code);
   if (!room) throw new Error("Sala no encontrada");
   if (room.host_token !== hostToken) throw new Error("No autorizado");
@@ -493,6 +494,11 @@ export async function hostAction(
         [room.code, order],
       );
       break;
+    }
+    case "cancel": {
+      // Cascade deletes players + guesses; clients poll 404 and return home.
+      await sql("delete from rooms where code = $1", [room.code]);
+      return null;
     }
     default:
       throw new Error("Acción inválida");

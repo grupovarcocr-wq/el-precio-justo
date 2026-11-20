@@ -1,13 +1,14 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CountdownRing, OPTION_STYLES, useCountdown } from "@/lib/Countdown";
 import { formatColones } from "@/lib/productos";
-import { useRoom } from "@/lib/useRoom";
+import { ROOM_GONE, useRoom } from "@/lib/useRoom";
 
 function JugarInner() {
   const params = useSearchParams();
+  const router = useRouter();
   const initialCode = (params.get("code") ?? "").toUpperCase();
   const [codeInput, setCodeInput] = useState(initialCode);
   const [code, setCode] = useState<string | null>(
@@ -41,6 +42,12 @@ function JugarInner() {
     playerId,
     intervalMs: 800,
   });
+
+  useEffect(() => {
+    if (error !== ROOM_GONE) return;
+    if (code) sessionStorage.removeItem(`player:${code}`);
+    router.replace("/");
+  }, [error, code, router]);
 
   const remainingMs = useCountdown(room?.roundEndsAt, room?.serverNow);
 
@@ -170,6 +177,14 @@ function JugarInner() {
         {msg ? (
           <p className="mt-4 text-center font-800 text-[var(--brown)]">{msg}</p>
         ) : null}
+      </main>
+    );
+  }
+
+  if (error === ROOM_GONE) {
+    return (
+      <main className="tv-shell grid place-items-center p-6">
+        <p className="brand text-3xl text-[var(--navy)]">Volviendo al inicio…</p>
       </main>
     );
   }

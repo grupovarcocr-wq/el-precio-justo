@@ -14,6 +14,7 @@ const ACTIONS = new Set<HostAction>([
   "restart",
   "finish",
   "config",
+  "cancel",
 ]);
 
 export async function POST(req: NextRequest, ctx: Ctx) {
@@ -27,9 +28,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     if (!body.hostToken || !body.action || !ACTIONS.has(body.action as HostAction)) {
       return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
     }
-    await hostAction(code, body.hostToken, body.action as HostAction, {
+    const updated = await hostAction(code, body.hostToken, body.action as HostAction, {
       timerSeconds: body.timerSeconds,
     });
+    if (!updated || body.action === "cancel") {
+      return NextResponse.json({ cancelled: true });
+    }
     const view = await buildRoomView(code, { hostToken: body.hostToken });
     return NextResponse.json(view);
   } catch (error) {
