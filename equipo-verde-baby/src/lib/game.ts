@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import {
+  ANSWER_GRACE_MS,
   buildDeck,
   DEFAULT_TIMER_SECONDS,
   getCardById,
@@ -16,11 +17,16 @@ import { sql } from "./db";
 export type Phase =
   | "lobby"
   | "answering"
+  | "showing"
   | "reviewing"
   | "revealed"
   | "finished";
 
+export type PlayMode = "digital" | "paper";
+
 export type Team = "orange" | "green";
+
+export { ANSWER_GRACE_MS };
 
 export type PlayerRow = {
   id: string;
@@ -54,6 +60,7 @@ export type RoomRow = {
   round_started_at: string | Date | null;
   round_ends_at: string | Date | null;
   answer_buckets: Record<string, string>;
+  play_mode: PlayMode;
 };
 
 export type AnswerBucket = {
@@ -85,7 +92,11 @@ export type RoomView = {
   timerSeconds: number;
   roundEndsAt: string | null;
   roundStartedAt: string | null;
+  /** Nominal timer end + grace; submits accepted until this (digital). */
+  submitClosesAt: string | null;
+  answerGraceMs: number;
   serverNow: string;
+  playMode: PlayMode;
   players: {
     id: string;
     name: string;
@@ -125,6 +136,19 @@ function clampTimer(seconds: number | undefined): number {
     return seconds;
   }
   return DEFAULT_TIMER_SECONDS;
+}
+
+function asPlayMode(value: unknown): PlayMode {
+  return value === "paper" ? "paper" : "digital";
+}
+
+function submitClosesAtIso(
+  roundEndsAt: string | Date | null | undefined,
+): string | null {
+  if (!roundEndsAt) return null;
+  const ends = new Date(roundEndsAt).getTime();
+  if (Number.isNaN(ends)) return null;
+  return new Date(ends + ANSWER_GRACE_MS).toISOString();
 }
 
 function toIso(value: string | Date | null | undefined): string | null {
@@ -177,8 +201,10 @@ export function currentCard(room: RoomRow) {
 
 export async function createRoom(opts: {
   timerSeconds?: number;
+  playMode?: PlayMode;
 } = {}): Promise<{ code: string; hostToken: string }> {
   const timerSeconds = clampTimer(opts.timerSeconds);
+  const playMode = asPlayMode(opts.playMode);
   const order = buildDeck();
 
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -187,9 +213,9 @@ export async function createRoom(opts: {
     try {
       await sql(
         `insert into rooms
-          (code, host_token, phase, card_index, card_order, timer_seconds, answer_buckets)
-         values ($1, $2, 'lobby', 0, $3, $4, '{}'::jsonb)`,
-        [code, hostToken, order, timerSeconds],
+          (code, host_token, phase, card_index, card_order, timer_seconds, answer_buckets, play_mode)
+         values ($1, $2, 'lobby', 0, $3, $4, '{}'::jsonb, $5)`,
+        [code, hostToken, order, timerSeconds, playMode],
       );
       return { code, hostToken };
     } catch {
@@ -205,7 +231,8 @@ export async function getRoom(code: string): Promise<RoomRow | null> {
             coalesce(card_order, '{}') as card_order,
             coalesce(timer_seconds, ${DEFAULT_TIMER_SECONDS}) as timer_seconds,
             round_started_at, round_ends_at,
-            coalesce(answer_buckets, '{}'::jsonb) as answer_buckets
+            coalesce(answer_buckets, '{}'::jsonb) as answer_buckets,
+            coalesce(play_mode, 'digital') as play_mode
      from rooms where code = $1`,
     [code.toUpperCase()],
   );
@@ -215,8 +242,9 @@ export async function getRoom(code: string): Promise<RoomRow | null> {
     ...row,
     card_order: asTextArray(row.card_order),
     answer_buckets: asBuckets(row.answer_buckets),
-    timer_seconds: Number(row.timer_seconds) || DEFAULT_TIMER_SECONDS,
+    timer_seconds: Number(row.timer_seconds),
     card_index: Number(row.card_index) || 0,
+    play_mode: asPlayMode(row.play_mode),
   };
 }
 
@@ -292,18 +320,29 @@ async function openRound(room: RoomRow, cardIndex: number): Promise<void> {
 
   const timerSeconds = clampTimer(room.timer_seconds);
   const started = new Date();
-  const ends = new Date(started.getTime() + timerSeconds * 1000);
+  const ends =
+    timerSeconds > 0
+      ? new Date(started.getTime() + timerSeconds * 1000)
+      : null;
+  const phase = room.play_mode === "paper" ? "showing" : "answering";
 
   await sql(
     `update rooms set
-       phase = 'answering',
+       phase = $6,
        card_index = $2,
        answer_buckets = '{}'::jsonb,
        round_started_at = $3,
        round_ends_at = $4,
        timer_seconds = $5
      where code = $1`,
-    [room.code, cardIndex, started.toISOString(), ends.toISOString(), timerSeconds],
+    [
+      room.code,
+      cardIndex,
+      started.toISOString(),
+      ends ? ends.toISOString() : null,
+      timerSeconds,
+      phase,
+    ],
   );
 }
 
@@ -314,9 +353,14 @@ function effectiveKey(
 ): string {
   let key = answerNorm;
   const seen = new Set<string>();
-  while (merges[key] && !seen.has(key)) {
+  while (
+    Object.prototype.hasOwnProperty.call(merges, key) &&
+    !seen.has(key)
+  ) {
     seen.add(key);
-    key = merges[key]!;
+    const next = merges[key];
+    if (typeof next !== "string" || !next) break;
+    key = next;
   }
   return key;
 }
@@ -471,11 +515,12 @@ async function closeAndScore(room: RoomRow): Promise<void> {
   );
 }
 
-/** Auto-close answering when countdown elapsed → reviewing. */
+/** Auto-close answering after timer + grace → reviewing. */
 export async function maybeExpireRound(room: RoomRow): Promise<RoomRow> {
   if (room.phase !== "answering" || !room.round_ends_at) return room;
+  if (room.play_mode === "paper") return room;
   const ends = new Date(room.round_ends_at).getTime();
-  if (Date.now() < ends) return room;
+  if (Date.now() < ends + ANSWER_GRACE_MS) return room;
   await enterReview(room);
   const updated = await getRoom(room.code);
   return updated ?? room;
@@ -488,10 +533,26 @@ export async function submitAnswer(
 ): Promise<void> {
   let room = await getRoom(code);
   if (!room) throw new Error("Sala no encontrada");
-  room = await maybeExpireRound(room);
+  if (room.play_mode === "paper") {
+    throw new Error("Modo papel: sin respuestas digitales");
+  }
+
+  // Accept submits during grace; only expire after grace window.
+  if (room.phase === "answering" && room.round_ends_at) {
+    const ends = new Date(room.round_ends_at).getTime();
+    if (Date.now() >= ends + ANSWER_GRACE_MS) {
+      room = await maybeExpireRound(room);
+    }
+  } else {
+    room = await maybeExpireRound(room);
+  }
+
   if (room.phase !== "answering") throw new Error("No hay ronda abierta");
 
-  if (room.round_ends_at && Date.now() >= new Date(room.round_ends_at).getTime()) {
+  if (
+    room.round_ends_at &&
+    Date.now() >= new Date(room.round_ends_at).getTime() + ANSWER_GRACE_MS
+  ) {
     await enterReview(room);
     throw new Error("Se acabó el tiempo");
   }
@@ -563,6 +624,7 @@ export async function hostAction(
   action: HostAction,
   opts: {
     timerSeconds?: number;
+    playMode?: PlayMode;
     fromKey?: string;
     intoKey?: string;
   } = {},
@@ -577,26 +639,38 @@ export async function hostAction(
       if (room.phase !== "lobby") {
         throw new Error("Solo se puede configurar en el lobby");
       }
-      const timerSeconds = clampTimer(opts.timerSeconds);
-      await sql("update rooms set timer_seconds = $2 where code = $1", [
-        room.code,
-        timerSeconds,
-      ]);
+      const timerSeconds =
+        opts.timerSeconds != null
+          ? clampTimer(opts.timerSeconds)
+          : room.timer_seconds;
+      const playMode =
+        opts.playMode != null ? asPlayMode(opts.playMode) : room.play_mode;
+      await sql(
+        `update rooms set timer_seconds = $2, play_mode = $3 where code = $1`,
+        [room.code, timerSeconds, playMode],
+      );
       break;
     }
     case "start": {
       if (room.phase !== "lobby") {
         throw new Error("No se puede iniciar ahora");
       }
-      const players = await listPlayers(room.code);
-      if (players.length < MIN_PLAYERS) {
-        throw new Error(`Se necesitan al menos ${MIN_PLAYERS} jugadores`);
+      if (opts.playMode != null) {
+        room = { ...room, play_mode: asPlayMode(opts.playMode) };
+        await sql(`update rooms set play_mode = $2 where code = $1`, [
+          room.code,
+          room.play_mode,
+        ]);
       }
       if (opts.timerSeconds != null) {
         room = {
           ...room,
           timer_seconds: clampTimer(opts.timerSeconds),
         };
+      }
+      const players = await listPlayers(room.code);
+      if (room.play_mode === "digital" && players.length < MIN_PLAYERS) {
+        throw new Error(`Se necesitan al menos ${MIN_PLAYERS} jugadores`);
       }
       await openRound(room, 0);
       break;
@@ -630,7 +704,11 @@ export async function hostAction(
       break;
     }
     case "next": {
-      if (room.phase !== "revealed") {
+      if (room.play_mode === "paper") {
+        if (room.phase !== "showing" && room.phase !== "revealed") {
+          throw new Error("No se puede avanzar ahora");
+        }
+      } else if (room.phase !== "revealed") {
         throw new Error("Revela primero");
       }
       const next = room.card_index + 1;
@@ -649,7 +727,9 @@ export async function hostAction(
     }
     case "skip": {
       if (room.phase === "finished") throw new Error("La partida ya terminó");
-      if (room.phase === "answering" || room.phase === "reviewing") {
+      if (room.play_mode === "paper") {
+        // same as next in paper
+      } else if (room.phase === "answering" || room.phase === "reviewing") {
         await sql(
           `update rooms set phase = 'revealed',
              round_ends_at = coalesce(round_ends_at, now())
@@ -701,6 +781,7 @@ export async function hostAction(
       );
       break;
     }
+    // play_mode preserved on restart via untouched column
     default:
       throw new Error("Acción inválida");
   }
@@ -786,7 +867,10 @@ export async function buildRoomView(
     timerSeconds: room.timer_seconds,
     roundEndsAt: toIso(room.round_ends_at),
     roundStartedAt: toIso(room.round_started_at),
+    submitClosesAt: submitClosesAtIso(room.round_ends_at),
+    answerGraceMs: ANSWER_GRACE_MS,
     serverNow: new Date().toISOString(),
+    playMode: room.play_mode,
     players: players.map((p) => ({
       id: p.id,
       name: p.name,
@@ -800,7 +884,7 @@ export async function buildRoomView(
     results,
     agilityWinnerName,
     isHost: isHost || undefined,
-    minPlayers: MIN_PLAYERS,
+    minPlayers: room.play_mode === "paper" ? 0 : MIN_PLAYERS,
     maxPlayers: MAX_PLAYERS,
   };
 }

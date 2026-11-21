@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { TIMER_CHOICES } from "@/lib/cartas";
 import { CountdownRing, useCountdown } from "@/lib/Countdown";
 import { useRoom } from "@/lib/useRoom";
-import type { AnswerBucket, RoomView, Team } from "@/lib/game";
+import type { AnswerBucket, PlayMode, RoomView, Team } from "@/lib/game";
 
 function HostInner() {
   const params = useSearchParams();
@@ -18,6 +18,7 @@ function HostInner() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
   const [timerSeconds, setTimerSeconds] = useState(25);
+  const [playMode, setPlayMode] = useState<PlayMode>("digital");
   const [mergeFrom, setMergeFrom] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,14 +40,14 @@ function HostInner() {
         const res = await fetch("/api/rooms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ timerSeconds }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Error");
-        sessionStorage.setItem(`host:${data.code}`, data.hostToken);
-        setCode(data.code);
-        setHostToken(data.hostToken);
-        router.replace(`/host?code=${data.code}`);
+        body: JSON.stringify({ timerSeconds, playMode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error");
+      sessionStorage.setItem(`host:${data.code}`, data.hostToken);
+      setCode(data.code);
+      setHostToken(data.hostToken);
+      router.replace(`/host?code=${data.code}`);
       } catch (e) {
         setActionError(
           e instanceof Error ? e.message : "No se pudo crear la sala",
@@ -65,16 +66,29 @@ function HostInner() {
   });
 
   useEffect(() => {
-    if (room?.timerSeconds) setTimerSeconds(room.timerSeconds);
+    if (room?.timerSeconds != null) setTimerSeconds(room.timerSeconds);
   }, [room?.timerSeconds]);
+
+  useEffect(() => {
+    if (room?.playMode) setPlayMode(room.playMode);
+  }, [room?.playMode]);
 
   const remainingMs = useCountdown(room?.roundEndsAt, room?.serverNow);
 
   useEffect(() => {
-    if (room?.phase === "answering" && remainingMs === 0 && room.roundEndsAt) {
-      void refresh();
+    if (room?.phase !== "answering" || remainingMs > 0 || !room.roundEndsAt) {
+      return;
     }
-  }, [remainingMs, room?.phase, room?.roundEndsAt, refresh]);
+    const grace = room.answerGraceMs ?? 2000;
+    const id = window.setTimeout(() => void refresh(), grace + 150);
+    return () => window.clearTimeout(id);
+  }, [
+    remainingMs,
+    room?.phase,
+    room?.roundEndsAt,
+    room?.answerGraceMs,
+    refresh,
+  ]);
 
   const joinUrl = useMemo(() => {
     if (!origin || !code) return "";
@@ -148,11 +162,16 @@ function HostInner() {
           room={room}
           joinUrl={joinUrl}
           timerSeconds={timerSeconds}
+          playMode={playMode}
           onTimerChange={(s) => {
             setTimerSeconds(s);
-            void act("config", { timerSeconds: s });
+            void act("config", { timerSeconds: s, playMode });
           }}
-          onStart={() => void act("start", { timerSeconds })}
+          onPlayModeChange={(m) => {
+            setPlayMode(m);
+            void act("config", { timerSeconds, playMode: m });
+          }}
+          onStart={() => void act("start", { timerSeconds, playMode })}
           busy={busy}
         />
       ) : null}
@@ -164,6 +183,16 @@ function HostInner() {
           remainingMs={remainingMs}
           onClose={() => void act("close")}
           onSkip={() => void act("skip")}
+          busy={busy}
+        />
+      ) : null}
+
+      {room.phase === "showing" ? (
+        <ShowingTV
+          room={room}
+          remainingMs={remainingMs}
+          onNext={() => void act("next")}
+          onFinish={() => void act("finish")}
           busy={busy}
         />
       ) : null}
@@ -217,18 +246,23 @@ function LobbyTV({
   room,
   joinUrl,
   timerSeconds,
+  playMode,
   onTimerChange,
+  onPlayModeChange,
   onStart,
   busy,
 }: {
   room: RoomView;
   joinUrl: string;
   timerSeconds: number;
+  playMode: PlayMode;
   onTimerChange: (s: number) => void;
+  onPlayModeChange: (m: PlayMode) => void;
   onStart: () => void;
   busy: boolean;
 }) {
-  const canStart = room.players.length >= room.minPlayers;
+  const canStart =
+    playMode === "paper" || room.players.length >= room.minPlayers;
   return (
     <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
       <section className="relative min-h-[46vh] overflow-hidden lg:min-h-dvh">
@@ -248,7 +282,9 @@ function LobbyTV({
             </h1>
             <p className="script text-3xl text-[#ffb86b]">Baby Edition</p>
             <p className="mt-3 max-w-md font-700 text-white/85">
-              15 rondas · mayoría gana · verde o naranja
+              {playMode === "paper"
+                ? "Modo papel: cartas en pantalla, puntos en papel"
+                : "15 rondas · mayoría gana · verde o naranja"}
             </p>
           </div>
           <div className="mt-8">
@@ -263,12 +299,46 @@ function LobbyTV({
       </section>
 
       <section className="flex flex-col gap-5 p-6 sm:p-8">
+        <div className="paper-panel p-5">
+          <p className="mb-2 text-sm font-800 uppercase tracking-wide">
+            Modo de juego
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              className={`btn text-left ${playMode === "digital" ? "btn-green" : "btn-ghost"}`}
+              style={{ borderRadius: "1.1rem" }}
+              onClick={() => onPlayModeChange("digital")}
+              disabled={busy}
+            >
+              <span className="brand block text-xl">Modo digital</span>
+              <span className="mt-1 block text-sm font-700 opacity-90">
+                Respuestas en el celular + puntos en la app
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`btn text-left ${playMode === "paper" ? "btn-orange" : "btn-ghost"}`}
+              style={{ borderRadius: "1.1rem" }}
+              onClick={() => onPlayModeChange("paper")}
+              disabled={busy}
+            >
+              <span className="brand block text-xl">Modo papel</span>
+              <span className="mt-1 block text-sm font-700 opacity-90">
+                Solo cartas en TV; anotan y puntúan en papel
+              </span>
+            </button>
+          </div>
+        </div>
+
         <div className="paper-panel flex flex-col items-center gap-3 p-5">
           {joinUrl ? (
             <QRCodeSVG value={joinUrl} size={168} bgColor="#ffffff" fgColor="#1a3a2a" />
           ) : null}
           <p className="text-center text-sm font-700 text-[var(--ink-soft)]">
-            Escaneá o entrá a /jugar con el código
+            {playMode === "paper"
+              ? "Opcional: jugadores ven la pregunta en /jugar"
+              : "Escaneá o entrá a /jugar con el código"}
           </p>
         </div>
 
@@ -278,12 +348,14 @@ function LobbyTV({
               Jugadores ({room.players.length}/{room.maxPlayers})
             </h2>
             <span className="text-sm font-800 text-[var(--ink-soft)]">
-              mín. {room.minPlayers}
+              {playMode === "paper" ? "opcionales" : `mín. ${room.minPlayers}`}
             </span>
           </div>
           <ul className="mt-3 flex flex-wrap gap-2">
             {room.players.length === 0 ? (
-              <li className="font-700 text-[var(--ink-soft)]">Esperando…</li>
+              <li className="font-700 text-[var(--ink-soft)]">
+                {playMode === "paper" ? "Podés empezar sin unir celulares" : "Esperando…"}
+              </li>
             ) : (
               room.players.map((p) => (
                 <li key={p.id} className="chip">
@@ -306,7 +378,7 @@ function LobbyTV({
                 className={`btn ${timerSeconds === s ? "btn-green" : "btn-ghost"}`}
                 onClick={() => onTimerChange(s)}
               >
-                {s}s
+                {s === 0 ? "Sin timer" : `${s}s`}
               </button>
             ))}
           </div>
@@ -384,6 +456,11 @@ function AnsweringTV({
           {answeredCount}/{room.players.length}
         </p>
         <p className="font-700 text-[var(--ink-soft)]">respondieron</p>
+        {remainingMs <= 0 && room.roundEndsAt ? (
+          <p className="mt-3 font-800 text-[var(--orange-deep)]">
+            Recibiendo últimos envíos…
+          </p>
+        ) : null}
       </section>
 
       <footer className="flex flex-wrap justify-center gap-3 px-5 pb-8">
@@ -427,9 +504,10 @@ function ReviewTV({
   const isChoice = room.card?.type === "estoOAquello";
   return (
     <div className="flex min-h-dvh flex-col px-5 py-6 sm:px-8">
-      <header className="mb-4">
+      <header className="mb-4 shrink-0">
         <p className="text-sm font-800 uppercase tracking-wide text-[var(--ink-soft)]">
-          Ronda {room.cardIndex + 1} · Revisar respuestas
+          Ronda {room.cardIndex + 1} · Revisar respuestas · {buckets.length}{" "}
+          {buckets.length === 1 ? "opción" : "opciones"}
         </p>
         <h2 className="brand mt-1 text-3xl sm:text-4xl">{room.card?.prompt}</h2>
         {!isChoice ? (
@@ -444,23 +522,25 @@ function ReviewTV({
         )}
       </header>
 
-      <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {buckets.map((b) => (
-          <BucketCard
-            key={b.key}
-            bucket={b}
-            winning={room.winningKeys?.includes(b.key) ?? false}
-            selected={mergeFrom === b.key}
-            onClick={() => (!isChoice ? onBucketTap(b.key) : undefined)}
-            clickable={!isChoice}
-          />
-        ))}
-        {buckets.length === 0 ? (
-          <p className="font-700 text-[var(--ink-soft)]">Nadie respondió.</p>
-        ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4">
+        <div className="grid auto-rows-max grid-cols-1 content-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {buckets.map((b) => (
+            <BucketCard
+              key={b.key}
+              bucket={b}
+              winning={room.winningKeys?.includes(b.key) ?? false}
+              selected={mergeFrom === b.key}
+              onClick={() => (!isChoice ? onBucketTap(b.key) : undefined)}
+              clickable={!isChoice}
+            />
+          ))}
+          {buckets.length === 0 ? (
+            <p className="font-700 text-[var(--ink-soft)]">Nadie respondió.</p>
+          ) : null}
+        </div>
       </div>
 
-      <footer className="mt-6 flex flex-wrap justify-center gap-3">
+      <footer className="mt-4 flex shrink-0 flex-wrap justify-center gap-3 border-t border-[var(--ink)]/10 pt-4">
         <button
           type="button"
           className="btn btn-orange text-lg"
@@ -477,6 +557,92 @@ function ReviewTV({
         >
           Saltar sin puntuar
         </button>
+      </footer>
+    </div>
+  );
+}
+
+function ShowingTV({
+  room,
+  remainingMs,
+  onNext,
+  onFinish,
+  busy,
+}: {
+  room: RoomView;
+  remainingMs: number;
+  onNext: () => void;
+  onFinish: () => void;
+  busy: boolean;
+}) {
+  const card = room.card!;
+  const last = room.cardIndex + 1 >= room.cardCount;
+  const hasTimer = Boolean(room.roundEndsAt) && room.timerSeconds > 0;
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <header className="flex items-center justify-between gap-4 bg-[var(--ink)] px-5 py-4 text-white sm:px-8">
+        <div>
+          <p className="text-sm font-800 uppercase tracking-wide text-white/70">
+            Modo papel · Ronda {room.cardIndex + 1} / {room.cardCount}
+          </p>
+          <p className="brand text-2xl sm:text-3xl">{card.typeLabel}</p>
+        </div>
+        {hasTimer ? (
+          <CountdownRing
+            remainingMs={remainingMs}
+            totalSeconds={room.timerSeconds}
+            size="sm"
+          />
+        ) : (
+          <span className="chip border-white/30 bg-white/15 text-white">
+            Sin timer
+          </span>
+        )}
+      </header>
+
+      <section className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
+        <p className="chip">{room.code}</p>
+        <h2 className="brand mt-4 max-w-3xl text-[clamp(1.8rem,5vw,3.4rem)] text-[var(--ink)]">
+          {card.prompt}
+        </h2>
+        {card.type === "estoOAquello" ? (
+          <div className="mt-6 grid w-full max-w-2xl gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl bg-[var(--leaf)] px-4 py-5 text-left text-white shadow">
+              <p className="text-sm font-800 opacity-80">A</p>
+              <p className="brand mt-1 text-2xl">{card.optionA}</p>
+            </div>
+            <div className="rounded-2xl bg-[var(--orange)] px-4 py-5 text-left text-white shadow">
+              <p className="text-sm font-800 opacity-80">B</p>
+              <p className="brand mt-1 text-2xl">{card.optionB}</p>
+            </div>
+          </div>
+        ) : null}
+        <p className="mt-8 max-w-lg font-700 text-[var(--ink-soft)]">
+          Respondan en secreto en papel. El host anota la mayoría y los puntos a
+          mano.
+        </p>
+      </section>
+
+      <footer className="flex flex-wrap justify-center gap-3 px-5 pb-8">
+        {last ? (
+          <button
+            type="button"
+            className="btn btn-orange text-lg"
+            disabled={busy}
+            onClick={onFinish}
+          >
+            Terminar
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-green text-lg"
+            disabled={busy}
+            onClick={onNext}
+          >
+            Siguiente carta
+          </button>
+        )}
       </footer>
     </div>
   );
@@ -629,6 +795,7 @@ function FinishedTV({
 }) {
   const ranked = [...room.players].sort((a, b) => b.score - a.score);
   const top = ranked[0];
+  const paper = room.playMode === "paper";
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-5 py-10 text-center">
       <img
@@ -637,11 +804,17 @@ function FinishedTV({
         className="mb-4 w-28 team-glow-green"
         aria-hidden
       />
-      <p className="chip">Partida terminada</p>
+      <p className="chip">
+        {paper ? "Modo papel · fin" : "Partida terminada"}
+      </p>
       <h1 className="brand mt-3 text-[clamp(2.4rem,8vw,4rem)] text-[var(--ink)]">
         ¡Equipo Verde!
       </h1>
-      {top ? (
+      {paper ? (
+        <p className="script mt-2 text-4xl text-[var(--orange)]">
+          Revisá el marcador en papel
+        </p>
+      ) : top ? (
         <p className="script mt-2 text-4xl text-[var(--orange)]">
           Gana {top.name} con {top.score} pts
         </p>

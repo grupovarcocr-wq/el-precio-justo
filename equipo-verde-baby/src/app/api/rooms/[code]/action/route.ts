@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildRoomView, hostAction, type HostAction } from "@/lib/game";
+import {
+  buildRoomView,
+  hostAction,
+  type HostAction,
+  type PlayMode,
+} from "@/lib/game";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +29,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       hostToken?: string;
       action?: string;
       timerSeconds?: number;
+      playMode?: PlayMode;
       fromKey?: string;
       intoKey?: string;
     };
@@ -32,6 +38,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     }
     await hostAction(code, body.hostToken, body.action as HostAction, {
       timerSeconds: body.timerSeconds,
+      playMode: body.playMode,
       fromKey: body.fromKey,
       intoKey: body.intoKey,
     });

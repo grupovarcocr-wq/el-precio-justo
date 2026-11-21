@@ -30,6 +30,34 @@ export function useCountdown(
   return remainingMs;
 }
 
+/** Ms until submit window closes (timer end + grace). Negative if already closed. */
+export function useSubmitWindowMs(
+  submitClosesAt: string | null | undefined,
+  serverNow: string | null | undefined,
+) {
+  const [remainingMs, setRemainingMs] = useState(0);
+
+  useEffect(() => {
+    if (!submitClosesAt) {
+      setRemainingMs(Number.POSITIVE_INFINITY);
+      return;
+    }
+    const ends = new Date(submitClosesAt).getTime();
+    const server = serverNow ? new Date(serverNow).getTime() : Date.now();
+    const skew = server - Date.now();
+
+    function tick() {
+      const now = Date.now() + skew;
+      setRemainingMs(ends - now);
+    }
+    tick();
+    const id = window.setInterval(tick, 200);
+    return () => window.clearInterval(id);
+  }, [submitClosesAt, serverNow]);
+
+  return remainingMs;
+}
+
 export function CountdownRing({
   remainingMs,
   totalSeconds,

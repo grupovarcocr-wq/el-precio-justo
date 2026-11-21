@@ -2,7 +2,11 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CountdownRing, useCountdown } from "@/lib/Countdown";
+import {
+  CountdownRing,
+  useCountdown,
+  useSubmitWindowMs,
+} from "@/lib/Countdown";
 import { useRoom } from "@/lib/useRoom";
 import type { Team } from "@/lib/game";
 
@@ -52,12 +56,19 @@ function JugarInner() {
   });
 
   const remainingMs = useCountdown(room?.roundEndsAt, room?.serverNow);
+  const submitWindowMs = useSubmitWindowMs(
+    room?.submitClosesAt,
+    room?.serverNow,
+  );
+  const canStillSubmit =
+    room?.phase === "answering" &&
+    (room.roundEndsAt == null || submitWindowMs > 0);
 
   useEffect(() => {
-    if (room?.phase === "answering" && remainingMs === 0 && room.roundEndsAt) {
-      void refresh();
-    }
-  }, [remainingMs, room?.phase, room?.roundEndsAt, refresh]);
+    if (room?.phase !== "answering" || !room.roundEndsAt) return;
+    if (submitWindowMs > 0) return;
+    void refresh();
+  }, [submitWindowMs, room?.phase, room?.roundEndsAt, refresh]);
 
   const me = useMemo(() => {
     if (!room || !playerId) return null;
@@ -109,28 +120,41 @@ function JugarInner() {
 
   async function sendAnswer(answer: string) {
     if (!code || !playerId || !room?.card) return;
-    if (remainingMs <= 0) {
+    if (!canStillSubmit) {
       setMsg("Se acabó el tiempo");
       return;
     }
     setBusy(true);
     setMsg(null);
-    try {
-      const res = await fetch(`/api/rooms/${code}/answer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId, answer }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error");
-      setSentForCard(room.card.id);
-      setMsg("¡Enviado! Esperá el resultado.");
-      await refresh();
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "No se pudo enviar");
-    } finally {
-      setBusy(false);
+    const cardId = room.card.id;
+    let lastError = "No se pudo enviar";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(`/api/rooms/${code}/answer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerId, answer }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Error");
+        setSentForCard(cardId);
+        setMsg("¡Enviado! Esperá el resultado.");
+        await refresh();
+        setBusy(false);
+        return;
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : "No se pudo enviar";
+        if (
+          lastError.includes("Ya enviaste") ||
+          lastError.includes("Modo papel")
+        ) {
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 280 + attempt * 200));
+      }
     }
+    setMsg(lastError);
+    setBusy(false);
   }
 
   if (!playerId || !code) {
@@ -233,7 +257,9 @@ function JugarInner() {
         <section className="mt-8 paper-panel p-5 text-center">
           <p className="brand text-3xl">En el lobby</p>
           <p className="mt-2 font-700 text-[var(--ink-soft)]">
-            Esperá a que el host empiece. Mínimo {room.minPlayers} jugadores.
+            {room.playMode === "paper"
+              ? "Modo papel: verás la pregunta; puntos en papel."
+              : `Esperá a que el host empiece. Mínimo ${room.minPlayers} jugadores.`}
           </p>
           <ul className="mt-4 flex flex-wrap justify-center gap-2">
             {room.players.map((p) => (
@@ -242,6 +268,33 @@ function JugarInner() {
               </li>
             ))}
           </ul>
+        </section>
+      ) : null}
+
+      {room.phase === "showing" && room.card ? (
+        <section className="mt-6">
+          <p className="chip w-fit">Modo papel</p>
+          <p className="mt-2 text-sm font-800 uppercase text-[var(--ink-soft)]">
+            Ronda {room.cardIndex + 1}/{room.cardCount} · {room.card.typeLabel}
+          </p>
+          <h2 className="brand mt-3 text-3xl text-[var(--ink)]">
+            {room.card.prompt}
+          </h2>
+          {room.card.type === "estoOAquello" ? (
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-2xl bg-[var(--leaf)] px-4 py-4 text-white">
+                <p className="text-sm font-800 opacity-80">A</p>
+                <p className="brand text-xl">{room.card.optionA}</p>
+              </div>
+              <div className="rounded-2xl bg-[var(--orange)] px-4 py-4 text-white">
+                <p className="text-sm font-800 opacity-80">B</p>
+                <p className="brand text-xl">{room.card.optionB}</p>
+              </div>
+            </div>
+          ) : null}
+          <p className="mt-6 paper-panel p-4 text-center font-800 text-[var(--ink-soft)]">
+            Anotá tu respuesta en papel. El host lleva los puntos.
+          </p>
         </section>
       ) : null}
 
@@ -256,11 +309,13 @@ function JugarInner() {
                 {room.card.typeLabel}
               </p>
             </div>
-            <CountdownRing
-              remainingMs={remainingMs}
-              totalSeconds={room.timerSeconds}
-              size="sm"
-            />
+            {room.timerSeconds > 0 && room.roundEndsAt ? (
+              <CountdownRing
+                remainingMs={remainingMs}
+                totalSeconds={room.timerSeconds}
+                size="sm"
+              />
+            ) : null}
           </div>
           <h2 className="brand mt-4 text-3xl text-[var(--ink)]">
             {room.card.prompt}
@@ -275,7 +330,7 @@ function JugarInner() {
               <button
                 type="button"
                 className="option-btn bg-[var(--leaf)] text-white"
-                disabled={busy || remainingMs <= 0}
+                disabled={busy || !canStillSubmit}
                 onClick={() => void sendAnswer("A")}
               >
                 <span className="block text-sm opacity-80">A</span>
@@ -284,7 +339,7 @@ function JugarInner() {
               <button
                 type="button"
                 className="option-btn bg-[var(--orange)] text-white"
-                disabled={busy || remainingMs <= 0}
+                disabled={busy || !canStillSubmit}
                 onClick={() => void sendAnswer("B")}
               >
                 <span className="block text-sm opacity-80">B</span>
@@ -306,17 +361,22 @@ function JugarInner() {
                 maxLength={80}
                 placeholder="Tu respuesta…"
                 autoComplete="off"
-                disabled={busy || remainingMs <= 0}
+                disabled={busy || !canStillSubmit}
               />
               <button
                 type="submit"
                 className="btn btn-green w-full text-lg"
-                disabled={busy || remainingMs <= 0 || !textAnswer.trim()}
+                disabled={busy || !canStillSubmit || !textAnswer.trim()}
               >
                 Enviar
               </button>
             </form>
           )}
+          {!myAnswered && remainingMs <= 0 && canStillSubmit ? (
+            <p className="mt-3 text-center font-800 text-[var(--orange-deep)]">
+              Últimos segundos para enviar…
+            </p>
+          ) : null}
         </section>
       ) : null}
 

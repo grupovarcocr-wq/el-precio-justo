@@ -13,8 +13,11 @@ export type Card = {
   optionB?: string;
 };
 
-export const TIMER_CHOICES = [15, 20, 25, 30] as const;
+/** 0 = sin cronómetro (host cierra / avanza a mano). */
+export const TIMER_CHOICES = [0, 15, 20, 25, 30] as const;
 export const DEFAULT_TIMER_SECONDS = 25;
+/** Grace after timer hits 0 so late POSTs still land. */
+export const ANSWER_GRACE_MS = 2000;
 export const MIN_PLAYERS = 3;
 export const MAX_PLAYERS = 12;
 export const ROUNDS = 15;
