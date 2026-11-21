@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CountdownRing, OPTION_STYLES, useCountdown } from "@/lib/Countdown";
 import { formatColones, TIMER_CHOICES } from "@/lib/productos";
 import { ROOM_GONE, useRoom } from "@/lib/useRoom";
-import type { RoomView } from "@/lib/game";
+import type { PlayMode, RoomView } from "@/lib/game";
 
 function HostInner() {
   const params = useSearchParams();
@@ -18,6 +18,7 @@ function HostInner() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
   const [timerSeconds, setTimerSeconds] = useState(20);
+  const [playMode, setPlayMode] = useState<PlayMode>("digital");
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -66,6 +67,10 @@ function HostInner() {
   useEffect(() => {
     if (room?.timerSeconds) setTimerSeconds(room.timerSeconds);
   }, [room?.timerSeconds]);
+
+  useEffect(() => {
+    if (room?.playMode) setPlayMode(room.playMode);
+  }, [room?.playMode]);
 
   const remainingMs = useCountdown(room?.roundEndsAt, room?.serverNow);
 
@@ -166,11 +171,16 @@ function HostInner() {
           room={room}
           joinUrl={joinUrl}
           timerSeconds={timerSeconds}
+          playMode={playMode}
           onTimerChange={(s) => {
             setTimerSeconds(s);
-            void act("config", { timerSeconds: s });
+            void act("config", { timerSeconds: s, playMode });
           }}
-          onStart={() => void act("start", { timerSeconds })}
+          onPlayModeChange={(mode) => {
+            setPlayMode(mode);
+            void act("config", { timerSeconds, playMode: mode });
+          }}
+          onStart={() => void act("start", { timerSeconds, playMode })}
           busy={busy}
         />
       ) : null}
@@ -212,17 +222,24 @@ function LobbyTV({
   room,
   joinUrl,
   timerSeconds,
+  playMode,
   onTimerChange,
+  onPlayModeChange,
   onStart,
   busy,
 }: {
   room: RoomView;
   joinUrl: string;
   timerSeconds: number;
+  playMode: PlayMode;
   onTimerChange: (s: number) => void;
+  onPlayModeChange: (mode: PlayMode) => void;
   onStart: () => void;
   busy: boolean;
 }) {
+  const paper = playMode === "papel";
+  const canStart = paper || room.players.length > 0;
+
   return (
     <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.15fr_0.85fr]">
       <section className="relative min-h-[48vh] overflow-hidden lg:min-h-dvh">
@@ -252,24 +269,68 @@ function LobbyTV({
             El Precio Justo
           </p>
           <p className="mt-3 max-w-xl text-lg font-700 text-white/85">
-            Escaneá el código o entrá a <strong>/jugar</strong>. Elegí entre 4
-            precios — más rápido, más puntos.
+            {paper
+              ? "Modo papel: los invitados escriben en papel. La TV solo muestra el producto y el tiempo."
+              : "Escaneá el código o entrá a /jugar. Elegí entre 4 precios — más rápido, más puntos."}
           </p>
-          <div className="mt-8 flex flex-wrap items-end gap-6">
-            <div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={`rounded-full px-4 py-2 text-sm font-900 ${
+                !paper
+                  ? "bg-[var(--sun)] text-[var(--navy)]"
+                  : "bg-white/20 text-white"
+              }`}
+              onClick={() => onPlayModeChange("digital")}
+              disabled={busy}
+            >
+              Modo celular
+            </button>
+            <button
+              type="button"
+              className={`rounded-full px-4 py-2 text-sm font-900 ${
+                paper
+                  ? "bg-[var(--sun)] text-[var(--navy)]"
+                  : "bg-white/20 text-white"
+              }`}
+              onClick={() => onPlayModeChange("papel")}
+              disabled={busy}
+            >
+              Modo papel
+            </button>
+          </div>
+
+          {!paper ? (
+            <div className="mt-8 flex flex-wrap items-end gap-6">
+              <div>
+                <p className="text-sm font-800 uppercase tracking-[0.2em] text-white/70">
+                  Código
+                </p>
+                <p className="brand glow-sun text-[clamp(4rem,14vw,8rem)] text-[var(--sun)]">
+                  {room.code}
+                </p>
+              </div>
+              {joinUrl ? (
+                <div className="rounded-[1.5rem] bg-[var(--cream)] p-4 shadow-[var(--shadow)]">
+                  <QRCodeSVG value={joinUrl} size={180} level="M" includeMargin />
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="mt-8">
               <p className="text-sm font-800 uppercase tracking-[0.2em] text-white/70">
-                Código
+                Sala
               </p>
-              <p className="brand glow-sun text-[clamp(4rem,14vw,8rem)] text-[var(--sun)]">
+              <p className="brand glow-sun text-[clamp(3rem,10vw,5.5rem)] text-[var(--sun)]">
                 {room.code}
               </p>
+              <p className="mt-2 max-w-md text-base font-700 text-white/80">
+                No hace falta QR ni celular. Contá a mano quién acertó al revelar
+                el precio.
+              </p>
             </div>
-            {joinUrl ? (
-              <div className="rounded-[1.5rem] bg-[var(--cream)] p-4 shadow-[var(--shadow)]">
-                <QRCodeSVG value={joinUrl} size={180} level="M" includeMargin />
-              </div>
-            ) : null}
-          </div>
+          )}
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <span className="text-sm font-800 uppercase tracking-wide text-white/75">
@@ -297,9 +358,9 @@ function LobbyTV({
             id="host-start-round"
             className="btn btn-sun mt-8 w-fit text-xl"
             onClick={onStart}
-            disabled={busy || room.players.length === 0}
+            disabled={busy || !canStart}
           >
-            {room.players.length === 0
+            {!canStart
               ? "Esperando jugadores…"
               : "¡Empezar primera ronda!"}
           </button>
@@ -307,24 +368,42 @@ function LobbyTV({
       </section>
 
       <aside className="flex flex-col justify-center bg-[rgba(196,165,116,0.18)] px-8 py-10 sm:px-12">
-        <h2 className="brand text-4xl text-[var(--navy)]">Jugadores</h2>
-        <ul className="mt-6 space-y-3">
-          {room.players.length === 0 ? (
-            <li className="pulse-soft text-lg font-700 text-[var(--ink-soft)]">
-              Nadie se ha unido todavía…
-            </li>
-          ) : (
-            room.players.map((p, i) => (
-              <li
-                key={p.id}
-                className="slide-up paper-panel px-4 py-3 text-xl font-800"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                {p.name}
-              </li>
-            ))
-          )}
-        </ul>
+        {paper ? (
+          <>
+            <h2 className="brand text-4xl text-[var(--navy)]">Modo papel</h2>
+            <p className="mt-4 text-lg font-700 leading-relaxed text-[var(--ink-soft)]">
+              Cada invitado escribe el precio en una hoja. Cuando se acabe el
+              tiempo (o cierres la ronda), revelá el precio en la TV y contá a
+              mano quién ganó.
+            </p>
+            <ul className="mt-6 space-y-3 text-base font-800 text-[var(--navy)]">
+              <li className="paper-panel px-4 py-3">1. Producto grande en pantalla</li>
+              <li className="paper-panel px-4 py-3">2. Cronómetro visible</li>
+              <li className="paper-panel px-4 py-3">3. Sin opciones ni marcador digital</li>
+            </ul>
+          </>
+        ) : (
+          <>
+            <h2 className="brand text-4xl text-[var(--navy)]">Jugadores</h2>
+            <ul className="mt-6 space-y-3">
+              {room.players.length === 0 ? (
+                <li className="pulse-soft text-lg font-700 text-[var(--ink-soft)]">
+                  Nadie se ha unido todavía…
+                </li>
+              ) : (
+                room.players.map((p, i) => (
+                  <li
+                    key={p.id}
+                    className="slide-up paper-panel px-4 py-3 text-xl font-800"
+                    style={{ animationDelay: `${i * 60}ms` }}
+                  >
+                    {p.name}
+                  </li>
+                ))
+              )}
+            </ul>
+          </>
+        )}
       </aside>
     </div>
   );
@@ -347,6 +426,7 @@ function GuessingTV({
 }) {
   const product = room.product;
   if (!product) return null;
+  const paper = room.playMode === "papel";
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[var(--navy)]">
@@ -365,12 +445,17 @@ function GuessingTV({
           <div>
             <p className="brand text-3xl text-white/90 sm:text-4xl">
               El Precio Justo
+              {paper ? (
+                <span className="ml-3 text-lg font-800 text-[var(--kraft)]">
+                  · Modo papel
+                </span>
+              ) : null}
             </p>
             <p className="mt-1 font-800 text-[var(--sun)]">
               {room.isTiebreaker
                 ? "Desempate"
-                : `Ronda ${room.productIndex + 1} / ${room.productCount}`}{" "}
-              · Código {room.code}
+                : `Ronda ${room.productIndex + 1} / ${room.productCount}`}
+              {!paper ? ` · Código ${room.code}` : ""}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -379,14 +464,16 @@ function GuessingTV({
               totalSeconds={room.timerSeconds}
               size="lg"
             />
-            <div className="rounded-2xl bg-[var(--cream)]/95 px-4 py-3 text-right shadow">
-              <p className="text-sm font-800 uppercase tracking-wide text-[var(--ink-soft)]">
-                Respuestas
-              </p>
-              <p className="brand text-3xl text-[var(--navy)]">
-                {guessedCount}/{room.players.length}
-              </p>
-            </div>
+            {!paper ? (
+              <div className="rounded-2xl bg-[var(--cream)]/95 px-4 py-3 text-right shadow">
+                <p className="text-sm font-800 uppercase tracking-wide text-[var(--ink-soft)]">
+                  Respuestas
+                </p>
+                <p className="brand text-3xl text-[var(--navy)]">
+                  {guessedCount}/{room.players.length}
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -395,10 +482,12 @@ function GuessingTV({
             {product.nombre}
           </h2>
           <p className="mt-3 text-xl font-800 text-white/90">
-            ¿Cuál es el precio? · 4 opciones en el celular
+            {paper
+              ? "¿Cuál es el precio? · Escribilo en el papel"
+              : "¿Cuál es el precio? · 4 opciones en el celular"}
           </p>
 
-          {room.options && room.options.length === 4 ? (
+          {!paper && room.options && room.options.length === 4 ? (
             <div className="mt-5 grid grid-cols-2 gap-3 max-w-2xl">
               {room.options.map((opt, i) => (
                 <div
@@ -429,21 +518,23 @@ function GuessingTV({
               Saltar producto
             </button>
           </div>
-          <ul className="mt-6 flex flex-wrap gap-2">
-            {room.players.map((p) => (
-              <li
-                key={p.id}
-                className={`rounded-full px-3 py-1.5 text-sm font-800 ${
-                  p.hasGuessed
-                    ? "bg-[var(--sun)] text-[var(--navy)]"
-                    : "bg-white/25 text-white"
-                }`}
-              >
-                {p.name}
-                {p.hasGuessed ? " ✓" : " …"}
-              </li>
-            ))}
-          </ul>
+          {!paper ? (
+            <ul className="mt-6 flex flex-wrap gap-2">
+              {room.players.map((p) => (
+                <li
+                  key={p.id}
+                  className={`rounded-full px-3 py-1.5 text-sm font-800 ${
+                    p.hasGuessed
+                      ? "bg-[var(--sun)] text-[var(--navy)]"
+                      : "bg-white/25 text-white"
+                  }`}
+                >
+                  {p.name}
+                  {p.hasGuessed ? " ✓" : " …"}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       </div>
     </div>
@@ -463,14 +554,71 @@ function RevealTV({
 }) {
   const product = room.product;
   if (!product || product.precio == null) return null;
+  const paper = room.playMode === "papel";
   const top = Math.max(0, ...room.players.map((p) => p.score));
   const leadersTied =
+    !paper &&
     room.players.length >= 2 &&
     room.players.filter((p) => p.score === top).length >= 2;
   const onLastMain =
     !room.isTiebreaker && room.productIndex >= room.productCount - 1;
-  const needsTiebreaker = onLastMain && leadersTied;
-  const isFinal = room.isTiebreaker || (onLastMain && !leadersTied);
+  const needsTiebreaker = !paper && onLastMain && leadersTied;
+  const isFinal =
+    paper
+      ? onLastMain
+      : room.isTiebreaker || (onLastMain && !leadersTied);
+
+  if (paper) {
+    return (
+      <div className="relative min-h-dvh overflow-hidden bg-[var(--navy)]">
+        <img
+          src={`/productos/${product.imagenPrecio ?? product.imagenProducto}`}
+          alt={`Precio de ${product.nombre}`}
+          className="absolute inset-0 m-auto max-h-full max-w-full object-contain p-4 pb-48 sm:p-8 sm:pb-56"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src =
+              `/productos/${product.imagenProducto}`;
+          }}
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[rgba(20,31,56,0.94)] via-[rgba(27,42,74,0.35)] to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 p-6 sm:p-12">
+          <p className="brand text-xl text-white/80 sm:text-2xl">
+            El Precio Justo · Modo papel
+          </p>
+          <p className="brand glow-sun mt-2 text-[clamp(3.2rem,9vw,6.5rem)] leading-none text-[var(--sun)]">
+            {formatColones(product.precio)}
+          </p>
+          <p className="mt-3 max-w-2xl text-lg font-700 text-white/90 sm:text-xl">
+            {product.nombre}
+          </p>
+          <p className="mt-2 max-w-xl text-base font-800 text-[var(--kraft)]">
+            Contá a mano quién acertó en el papel.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {isFinal ? (
+              <button
+                type="button"
+                className="btn btn-coral text-lg"
+                onClick={onFinish}
+                disabled={busy}
+              >
+                Fin del juego
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-teal text-lg"
+                onClick={onNext}
+                disabled={busy}
+              >
+                Siguiente producto
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.05fr_0.95fr]">
@@ -579,6 +727,7 @@ function FinishedTV({
   onRestart: () => void;
   busy: boolean;
 }) {
+  const paper = room.playMode === "papel";
   const ranked = [...room.players].sort((a, b) => b.score - a.score);
   const top = ranked[0]?.score ?? 0;
   const champs = ranked.filter((p) => p.score === top && top > 0);
@@ -591,30 +740,41 @@ function FinishedTV({
         className="mb-4 w-28 self-center drop-shadow"
         aria-hidden
       />
-      <p className="brand text-3xl text-[var(--kraft)]">El Precio Justo</p>
+      <p className="brand text-3xl text-[var(--kraft)]">
+        El Precio Justo
+        {paper ? " · Modo papel" : ""}
+      </p>
       <h1 className="brand mt-2 text-[clamp(2.6rem,9vw,5.2rem)] text-[var(--brown)]">
-        {champs.length === 0
+        {paper
           ? "Fin del juego"
-          : champs.length === 1
-            ? `¡Campeón: ${champs[0]!.name}!`
-            : `¡Campeones: ${champs.map((c) => c.name).join(", ")}!`}
+          : champs.length === 0
+            ? "Fin del juego"
+            : champs.length === 1
+              ? `¡Campeón: ${champs[0]!.name}!`
+              : `¡Campeones: ${champs.map((c) => c.name).join(", ")}!`}
       </h1>
-      <ol className="mt-8 space-y-3">
-        {ranked.map((p, i) => (
-          <li
-            key={p.id}
-            className="slide-up paper-panel flex justify-between px-5 py-4 text-2xl font-900"
-            style={{ animationDelay: `${i * 80}ms` }}
-          >
-            <span>
-              {i + 1}. {p.name}
-            </span>
-            <span>
-              {p.score} {p.score === 1 ? "punto" : "puntos"}
-            </span>
-          </li>
-        ))}
-      </ol>
+      {paper ? (
+        <p className="mt-4 max-w-xl text-lg font-700 text-[var(--ink-soft)]">
+          El conteo fue a mano. ¡Gracias por jugar en el Té de Leandro!
+        </p>
+      ) : (
+        <ol className="mt-8 space-y-3">
+          {ranked.map((p, i) => (
+            <li
+              key={p.id}
+              className="slide-up paper-panel flex justify-between px-5 py-4 text-2xl font-900"
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
+              <span>
+                {i + 1}. {p.name}
+              </span>
+              <span>
+                {p.score} {p.score === 1 ? "punto" : "puntos"}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
       <button
         type="button"
         className="btn btn-sun mt-10 w-fit text-lg"
