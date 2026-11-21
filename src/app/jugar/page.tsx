@@ -1,10 +1,31 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CountdownRing, OPTION_STYLES, useCountdown } from "@/lib/Countdown";
 import { formatColones } from "@/lib/productos";
+import {
+  submitGuessWithRetry,
+  type GuessSubmitReason,
+} from "@/lib/submitGuess";
 import { ROOM_GONE, useRoom } from "@/lib/useRoom";
+
+type GuessUiStatus = "idle" | "pending" | "accepted" | "rejected" | "error";
+
+function rejectCopy(reason: GuessSubmitReason): string {
+  switch (reason) {
+    case "too_late":
+      return "Llegó tarde — la ronda ya cerró.";
+    case "closed":
+      return "La ronda ya cerró. Tu respuesta no contó.";
+    case "already":
+      return "Ya enviaste tu respuesta.";
+    case "network":
+      return "Sin conexión con el servidor. Tocá de nuevo.";
+    default:
+      return "No se pudo enviar la respuesta.";
+  }
+}
 
 function JugarInner() {
   const params = useSearchParams();
@@ -19,7 +40,11 @@ function JugarInner() {
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [guessStatus, setGuessStatus] = useState<GuessUiStatus>("idle");
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [guessMsg, setGuessMsg] = useState<string | null>(null);
   const [sentForProduct, setSentForProduct] = useState<number | null>(null);
+  const submitLock = useRef(false);
 
   useEffect(() => {
     if (!code) return;
@@ -62,13 +87,44 @@ function JugarInner() {
     return room.players.some((p) => p.id === playerId && p.hasGuessed);
   }, [room, playerId]);
 
+  const guessAccepted =
+    guessStatus === "accepted" ||
+    (Boolean(room?.product) && sentForProduct === room?.product?.id) ||
+    myGuessed;
+
+  // Reset local submit UI only when the product / round identity changes.
+  const productKey = room?.product?.id ?? null;
+  const prevProductKey = useRef<number | null>(null);
   useEffect(() => {
-    if (room?.phase === "guessing" && room.product) {
-      if (sentForProduct !== room.product.id) {
-        setMsg(null);
-      }
-    }
-  }, [room?.phase, room?.product?.id, sentForProduct]);
+    if (room?.phase !== "guessing" || productKey == null) return;
+    if (prevProductKey.current === productKey) return;
+    prevProductKey.current = productKey;
+    setMsg(null);
+    setGuessStatus("idle");
+    setSelectedAmount(null);
+    setGuessMsg(null);
+    submitLock.current = false;
+  }, [room?.phase, productKey]);
+
+  // Host board / poll confirmed the guess even if our POST response was lost.
+  useEffect(() => {
+    if (!room?.product || !myGuessed) return;
+    if (sentForProduct === room.product.id && guessStatus === "accepted") return;
+    setSentForProduct(room.product.id);
+    setGuessStatus("accepted");
+    setGuessMsg("¡Aceptada! El servidor ya tiene tu respuesta.");
+    submitLock.current = false;
+  }, [myGuessed, room?.product?.id, sentForProduct, guessStatus]);
+
+  // Round flipped while we never got an ack → make that obvious.
+  useEffect(() => {
+    if (room?.phase !== "revealed" && room?.phase !== "finished") return;
+    if (guessStatus !== "pending") return;
+    if (myGuessed) return;
+    setGuessStatus("rejected");
+    setGuessMsg("La ronda cerró antes de confirmar tu respuesta.");
+    submitLock.current = false;
+  }, [room?.phase, guessStatus, myGuessed]);
 
   async function join(e: React.FormEvent) {
     e.preventDefault();
@@ -104,28 +160,39 @@ function JugarInner() {
 
   async function sendChoice(amount: number) {
     if (!code || !playerId || !room?.product) return;
-    if (remainingMs <= 0) {
-      setMsg("Se acabó el tiempo");
+    if (room.phase !== "guessing") {
+      setGuessStatus("rejected");
+      setGuessMsg("La ronda ya cerró.");
       return;
     }
-    setBusy(true);
+    if (guessAccepted || submitLock.current) return;
+
+    // Do not gate on local remainingMs — phone clocks / 200ms ticks can show
+    // 0 while the server still accepts within the grace window.
+    submitLock.current = true;
+    setSelectedAmount(amount);
+    setGuessStatus("pending");
+    setGuessMsg("Enviando al servidor…");
     setMsg(null);
-    try {
-      const res = await fetch(`/api/rooms/${code}/guess`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId, amount }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error");
+
+    const result = await submitGuessWithRetry({
+      code,
+      playerId,
+      amount,
+    });
+
+    if (result.ok) {
       setSentForProduct(room.product.id);
-      setMsg("¡Enviado! Esperá la revelación en la TV.");
+      setGuessStatus("accepted");
+      setGuessMsg("¡Aceptada! El servidor ya tiene tu respuesta.");
       await refresh();
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "No se pudo enviar");
-    } finally {
-      setBusy(false);
+      submitLock.current = false;
+      return;
     }
+
+    setGuessStatus(result.reason === "network" ? "error" : "rejected");
+    setGuessMsg(rejectCopy(result.reason));
+    submitLock.current = false;
   }
 
   if (!playerId || !code) {
@@ -302,27 +369,60 @@ function JugarInner() {
             Tocá el precio correcto (₡).
           </p>
 
-          {myGuessed ? (
+          {guessAccepted ? (
             <div className="mt-6 paper-panel p-5 text-center">
               <p className="brand text-3xl text-[var(--navy)]">¡Listo!</p>
               <p className="mt-2 font-700 text-[var(--ink-soft)]">
-                Esperá la revelación en la TV.
+                {guessMsg ?? "Esperá la revelación en la TV."}
               </p>
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              {(room.options ?? []).map((opt, i) => (
-                <button
-                  key={opt}
-                  type="button"
-                  className={`option-btn ${OPTION_STYLES[i % 4]}`}
-                  disabled={busy || remainingMs <= 0}
-                  onClick={() => void sendChoice(opt)}
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {(room.options ?? []).map((opt, i) => {
+                  const selected = selectedAmount === opt;
+                  const pending = guessStatus === "pending" && selected;
+                  const dimmed =
+                    selectedAmount != null &&
+                    !selected &&
+                    (guessStatus === "pending" || guessStatus === "error");
+                  const locked = guessStatus === "pending";
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      className={`option-btn ${OPTION_STYLES[i % 4]} ${
+                        selected ? "is-selected" : ""
+                      } ${pending ? "is-pending" : ""} ${
+                        dimmed ? "is-dimmed" : ""
+                      }`}
+                      disabled={locked}
+                      aria-pressed={selected}
+                      aria-busy={pending}
+                      onClick={() => void sendChoice(opt)}
+                    >
+                      {formatColones(opt)}
+                    </button>
+                  );
+                })}
+              </div>
+              {guessStatus === "pending" ||
+              guessStatus === "rejected" ||
+              guessStatus === "error" ? (
+                <p
+                  className={`guess-status is-${guessStatus}`}
+                  role="status"
+                  aria-live="polite"
                 >
-                  {formatColones(opt)}
-                </button>
-              ))}
-            </div>
+                  {guessMsg}
+                  {guessStatus === "error" ? " Tocá otra vez para reintentar." : ""}
+                </p>
+              ) : remainingMs <= 0 ? (
+                <p className="guess-status is-pending" role="status">
+                  Tiempo en pantalla agotado — si tocás ahora, aún puede llegar.
+                </p>
+              ) : null}
+            </>
           )}
         </section>
       ) : null}
