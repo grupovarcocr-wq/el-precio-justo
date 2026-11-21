@@ -265,7 +265,8 @@ input {
   font-weight: 900;
   font-size: 1.35rem;
   cursor: pointer;
-  transition: transform 0.12s ease, filter 0.12s ease;
+  transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease,
+    opacity 0.12s ease;
   box-shadow: 0 10px 22px rgba(27, 42, 74, 0.22);
 }
 
@@ -276,4 +277,58 @@ input {
 .option-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.option-btn.is-selected {
+  opacity: 1;
+  outline: 3px solid var(--sun);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(224, 192, 74, 0.45),
+    0 10px 22px rgba(27, 42, 74, 0.22);
+}
+
+.option-btn.is-pending {
+  animation: option-pulse 0.9s ease-in-out infinite;
+}
+
+.option-btn.is-dimmed {
+  opacity: 0.4;
+}
+
+@keyframes option-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
+.guess-status {
+  margin-top: 1rem;
+  border-radius: 1.1rem;
+  padding: 0.85rem 1rem;
+  text-align: center;
+  font-weight: 800;
+}
+
+.guess-status.is-pending {
+  background: rgba(224, 192, 74, 0.35);
+  color: var(--navy);
+}
+
+.guess-status.is-accepted {
+  background: rgba(61, 90, 122, 0.18);
+  color: var(--navy);
+}
+
+.guess-status.is-rejected {
+  background: rgba(107, 74, 46, 0.18);
+  color: var(--brown);
+}
+
+.guess-status.is-error {
+  background: rgba(180, 60, 40, 0.14);
+  color: var(--brown);
 }

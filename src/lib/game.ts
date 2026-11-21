@@ -14,6 +14,41 @@ import {
 
 export type Phase = "lobby" | "guessing" | "revealed" | "finished";
 
+/**
+ * After the visible countdown hits zero, keep accepting in-flight guesses
+ * for this long so mobile latency / poll-driven auto-close do not drop taps
+ * that happened while the timer still showed time remaining.
+ */
+export const GUESS_ACCEPT_GRACE_MS = 2500;
+
+export type GuessRejectReason =
+  | "not_found"
+  | "closed"
+  | "too_late"
+  | "already"
+  | "invalid"
+  | "player";
+
+export class GuessError extends Error {
+  reason: GuessRejectReason;
+
+  constructor(message: string, reason: GuessRejectReason) {
+    super(message);
+    this.name = "GuessError";
+    this.reason = reason;
+  }
+}
+
+export type GuessAck = {
+  accepted: true;
+  productId: number;
+};
+
+function acceptDeadlineMs(room: RoomRow): number | null {
+  if (!room.round_ends_at) return null;
+  return new Date(room.round_ends_at).getTime() + GUESS_ACCEPT_GRACE_MS;
+}
+
 export type PlayerRow = {
   id: string;
   room_code: string;
@@ -346,11 +381,14 @@ async function closeRound(room: RoomRow): Promise<void> {
   );
 }
 
-/** Auto-close when the countdown has elapsed. */
+/**
+ * Auto-close after the visible timer plus accept-grace, so late network
+ * deliveries of on-time taps can still land before the round flips.
+ */
 export async function maybeExpireRound(room: RoomRow): Promise<RoomRow> {
   if (room.phase !== "guessing" || !room.round_ends_at) return room;
-  const ends = new Date(room.round_ends_at).getTime();
-  if (Date.now() < ends) return room;
+  const deadline = acceptDeadlineMs(room);
+  if (deadline == null || Date.now() < deadline) return room;
   await closeRound(room);
   const updated = await getRoom(room.code);
   return updated ?? room;
@@ -360,28 +398,33 @@ export async function submitGuess(
   code: string,
   playerId: string,
   amount: number,
-): Promise<void> {
-  let room = await getRoom(code);
-  if (!room) throw new Error("Sala no encontrada");
-  room = await maybeExpireRound(room);
-  if (room.phase !== "guessing") throw new Error("No hay apuestas abiertas");
+): Promise<GuessAck> {
+  const room = await getRoom(code);
+  if (!room) throw new GuessError("Sala no encontrada", "not_found");
 
-  if (room.round_ends_at && Date.now() >= new Date(room.round_ends_at).getTime()) {
+  // Accept within grace without closing first — do not call maybeExpireRound
+  // here, or a concurrent host poll could win the race and drop the guess.
+  if (room.phase !== "guessing") {
+    throw new GuessError("La ronda ya cerró", "closed");
+  }
+
+  const deadline = acceptDeadlineMs(room);
+  if (deadline != null && Date.now() >= deadline) {
     await closeRound(room);
-    throw new Error("Se acabó el tiempo");
+    throw new GuessError("Se acabó el tiempo", "too_late");
   }
 
   const players = await listPlayers(code);
   if (!players.some((p) => p.id === playerId)) {
-    throw new Error("Jugador no encontrado");
+    throw new GuessError("Jugador no encontrado", "player");
   }
 
   const product = currentProduct(room);
-  if (!product) throw new Error("Producto no válido");
+  if (!product) throw new GuessError("Producto no válido", "invalid");
 
   const rounded = Math.round(amount);
   if (!room.options.includes(rounded)) {
-    throw new Error("Opción inválida");
+    throw new GuessError("Opción inválida", "invalid");
   }
 
   const existing = await sql<{ player_id: string }>(
@@ -389,14 +432,39 @@ export async function submitGuess(
     [room.code, playerId, product.id],
   );
   if (existing.length > 0) {
-    throw new Error("Ya enviaste tu respuesta");
+    // Idempotent ack: client retries after a lost response should succeed.
+    return { accepted: true, productId: product.id };
   }
 
-  await sql(
-    `insert into guesses (room_code, player_id, product_id, amount, answered_at, points_awarded)
-     values ($1, $2, $3, $4, now(), 0)`,
-    [room.code, playerId, product.id, rounded],
-  );
+  // Clamp answered_at to the visible deadline so grace deliveries do not
+  // earn more speed points than a tap at t=0 would.
+  const endsIso = toIso(room.round_ends_at);
+  try {
+    await sql(
+      `insert into guesses (room_code, player_id, product_id, amount, answered_at, points_awarded)
+       values (
+         $1, $2, $3, $4,
+         case
+           when $5::timestamptz is not null and now() > $5::timestamptz
+             then $5::timestamptz
+           else now()
+         end,
+         0
+       )`,
+      [room.code, playerId, product.id, rounded, endsIso],
+    );
+  } catch {
+    // Concurrent retry hit the primary key — treat as accepted.
+    const again = await sql<{ player_id: string }>(
+      "select player_id from guesses where room_code = $1 and player_id = $2 and product_id = $3",
+      [room.code, playerId, product.id],
+    );
+    if (again.length === 0) {
+      throw new GuessError("No se pudo enviar", "invalid");
+    }
+  }
+
+  return { accepted: true, productId: product.id };
 }
 
 export type HostAction =
