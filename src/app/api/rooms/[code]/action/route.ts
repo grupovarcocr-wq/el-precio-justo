@@ -24,12 +24,14 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       hostToken?: string;
       action?: string;
       timerSeconds?: number;
+      playMode?: "digital" | "papel";
     };
     if (!body.hostToken || !body.action || !ACTIONS.has(body.action as HostAction)) {
       return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
     }
     const updated = await hostAction(code, body.hostToken, body.action as HostAction, {
       timerSeconds: body.timerSeconds,
+      playMode: body.playMode,
     });
     if (!updated || body.action === "cancel") {
       return NextResponse.json({ cancelled: true });

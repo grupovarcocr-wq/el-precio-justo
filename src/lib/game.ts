@@ -14,6 +14,9 @@ import {
 
 export type Phase = "lobby" | "guessing" | "revealed" | "finished";
 
+/** digital = Kahoot-style phones; papel = physical paper, TV image + timer only */
+export type PlayMode = "digital" | "papel";
+
 export type PlayerRow = {
   id: string;
   room_code: string;
@@ -40,6 +43,7 @@ export type RoomRow = {
   round_started_at: string | Date | null;
   round_ends_at: string | Date | null;
   options: number[];
+  play_mode: PlayMode;
 };
 
 export type GuessResult = {
@@ -56,6 +60,7 @@ export type GuessResult = {
 export type RoomView = {
   code: string;
   phase: Phase;
+  playMode: PlayMode;
   productIndex: number;
   productCount: number;
   /** True when the current round is the reserved sudden-death product. */
@@ -95,6 +100,14 @@ function clampTimer(seconds: number | undefined): number {
     return seconds;
   }
   return DEFAULT_TIMER_SECONDS;
+}
+
+function clampPlayMode(mode: string | undefined): PlayMode {
+  return mode === "papel" ? "papel" : "digital";
+}
+
+function isPaper(room: { play_mode: PlayMode }): boolean {
+  return room.play_mode === "papel";
 }
 
 function toIso(value: string | Date | null | undefined): string | null {
@@ -166,7 +179,8 @@ async function advanceAfterRound(room: RoomRow): Promise<void> {
     return;
   }
 
-  if (isTiebreakerIndex(order, next)) {
+  // Paper mode uses every product (manual scoring — no digital tiebreaker).
+  if (!isPaper(room) && isTiebreakerIndex(order, next)) {
     const players = await listPlayers(room.code);
     if (!topScoresTied(players)) {
       await finishRoom(room.code);
@@ -186,8 +200,10 @@ export function currentProduct(room: RoomRow) {
 
 export async function createRoom(opts: {
   timerSeconds?: number;
+  playMode?: PlayMode | string;
 } = {}): Promise<{ code: string; hostToken: string }> {
   const timerSeconds = clampTimer(opts.timerSeconds);
+  const playMode = clampPlayMode(opts.playMode);
   const order = shuffleProductIds();
 
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -196,9 +212,9 @@ export async function createRoom(opts: {
     try {
       await sql(
         `insert into rooms
-          (code, host_token, phase, product_index, product_order, timer_seconds, options)
-         values ($1, $2, 'lobby', 0, $3, $4, '{}')`,
-        [code, hostToken, order, timerSeconds],
+          (code, host_token, phase, product_index, product_order, timer_seconds, options, play_mode)
+         values ($1, $2, 'lobby', 0, $3, $4, '{}', $5)`,
+        [code, hostToken, order, timerSeconds, playMode],
       );
       return { code, hostToken };
     } catch {
@@ -214,7 +230,8 @@ export async function getRoom(code: string): Promise<RoomRow | null> {
             coalesce(product_order, '{}') as product_order,
             coalesce(timer_seconds, ${DEFAULT_TIMER_SECONDS}) as timer_seconds,
             round_started_at, round_ends_at,
-            coalesce(options, '{}') as options
+            coalesce(options, '{}') as options,
+            coalesce(play_mode, 'digital') as play_mode
      from rooms where code = $1`,
     [code.toUpperCase()],
   );
@@ -225,6 +242,7 @@ export async function getRoom(code: string): Promise<RoomRow | null> {
     product_order: asIntArray(row.product_order),
     options: asIntArray(row.options),
     timer_seconds: Number(row.timer_seconds) || DEFAULT_TIMER_SECONDS,
+    play_mode: clampPlayMode(row.play_mode),
   };
 }
 
@@ -255,6 +273,11 @@ export async function joinRoom(
   const room = await getRoom(code);
   if (!room) throw new Error("Sala no encontrada");
   if (room.phase === "finished") throw new Error("La partida ya terminó");
+  if (isPaper(room)) {
+    throw new Error(
+      "Esta sala es modo papel: no hace falta el celular. Escribí en el papel y mirá la TV.",
+    );
+  }
 
   const clean = name.trim().slice(0, 24);
   if (clean.length < 1) throw new Error("Escribe tu nombre");
@@ -338,7 +361,10 @@ async function scoreRound(room: RoomRow): Promise<void> {
 
 async function closeRound(room: RoomRow): Promise<void> {
   if (room.phase !== "guessing") return;
-  await scoreRound(room);
+  // Paper mode: host counts winners by hand — no automatic points.
+  if (!isPaper(room)) {
+    await scoreRound(room);
+  }
   await sql(
     `update rooms set phase = 'revealed', round_ends_at = coalesce(round_ends_at, now())
      where code = $1 and phase = 'guessing'`,
@@ -364,6 +390,9 @@ export async function submitGuess(
   let room = await getRoom(code);
   if (!room) throw new Error("Sala no encontrada");
   room = await maybeExpireRound(room);
+  if (isPaper(room)) {
+    throw new Error("Modo papel: las respuestas van en el papel, no en el celular");
+  }
   if (room.phase !== "guessing") throw new Error("No hay apuestas abiertas");
 
   if (room.round_ends_at && Date.now() >= new Date(room.round_ends_at).getTime()) {
@@ -414,7 +443,7 @@ export async function hostAction(
   code: string,
   hostToken: string,
   action: HostAction,
-  opts: { timerSeconds?: number } = {},
+  opts: { timerSeconds?: number; playMode?: PlayMode | string } = {},
 ): Promise<RoomRow | null> {
   let room = await getRoom(code);
   if (!room) throw new Error("Sala no encontrada");
@@ -426,11 +455,16 @@ export async function hostAction(
       if (room.phase !== "lobby") {
         throw new Error("Solo se puede configurar en el lobby");
       }
-      const timerSeconds = clampTimer(opts.timerSeconds);
-      await sql("update rooms set timer_seconds = $2 where code = $1", [
-        room.code,
-        timerSeconds,
-      ]);
+      const timerSeconds =
+        opts.timerSeconds != null
+          ? clampTimer(opts.timerSeconds)
+          : room.timer_seconds;
+      const playMode =
+        opts.playMode != null ? clampPlayMode(opts.playMode) : room.play_mode;
+      await sql(
+        "update rooms set timer_seconds = $2, play_mode = $3 where code = $1",
+        [room.code, timerSeconds, playMode],
+      );
       break;
     }
     case "start": {
@@ -442,6 +476,21 @@ export async function hostAction(
           ...room,
           timer_seconds: clampTimer(opts.timerSeconds),
         };
+      }
+      if (opts.playMode != null) {
+        const playMode = clampPlayMode(opts.playMode);
+        room = { ...room, play_mode: playMode };
+        await sql("update rooms set play_mode = $2 where code = $1", [
+          room.code,
+          playMode,
+        ]);
+      }
+      // Digital mode needs at least one phone player; paper does not.
+      if (!isPaper(room)) {
+        const players = await listPlayers(room.code);
+        if (players.length === 0) {
+          throw new Error("Esperá al menos un jugador en el celular");
+        }
       }
       await openRound(room, 0);
       break;
@@ -518,16 +567,21 @@ export async function buildRoomView(
   room = await maybeExpireRound(room);
 
   const isHost = Boolean(opts.hostToken && opts.hostToken === room.host_token);
+  const paper = isPaper(room);
   const players = await listPlayers(room.code);
   const product = currentProduct(room);
   const order = productOrderFor(room);
-  const tiebreaker = isTiebreakerIndex(order, room.product_index);
+  const tiebreaker = !paper && isTiebreakerIndex(order, room.product_index);
   const mainCount = mainRoundCount(order);
-  const productCount = tiebreaker ? order.length : mainCount;
+  const productCount = paper
+    ? order.length
+    : tiebreaker
+      ? order.length
+      : mainCount;
   const revealed = room.phase === "revealed" || room.phase === "finished";
 
   let guesses: GuessRow[] = [];
-  if (product) {
+  if (product && !paper) {
     guesses = await listGuesses(room.code, product.id);
   }
   const guessed = new Set(guesses.map((g) => g.player_id));
@@ -535,7 +589,7 @@ export async function buildRoomView(
   let results: GuessResult[] | null = null;
   let winners: string[] | null = null;
 
-  if (room.phase === "revealed" && product) {
+  if (!paper && room.phase === "revealed" && product) {
     const byPlayer = new Map(guesses.map((g) => [g.player_id, g]));
     const rows: GuessResult[] = players
       .filter((p) => byPlayer.has(p.id))
@@ -569,7 +623,7 @@ export async function buildRoomView(
   }
 
   const showOptions =
-    room.phase === "guessing" || room.phase === "revealed"
+    !paper && (room.phase === "guessing" || room.phase === "revealed")
       ? room.options.length > 0
         ? room.options
         : null
@@ -578,6 +632,7 @@ export async function buildRoomView(
   return {
     code: room.code,
     phase: room.phase,
+    playMode: room.play_mode,
     productIndex: room.product_index,
     productCount,
     isTiebreaker: tiebreaker,

@@ -205,6 +205,29 @@ function JugarInner() {
     );
   }
 
+  if (room.playMode === "papel") {
+    return (
+      <main className="tv-shell mx-auto flex w-full max-w-md flex-col justify-center px-5 py-10">
+        <img
+          src="/branding/leon-bebe.png"
+          alt=""
+          className="mb-3 w-24 self-center"
+          aria-hidden
+        />
+        <p className="chip w-fit">Modo papel</p>
+        <h1 className="brand mt-3 text-4xl text-[var(--navy)]">
+          El Precio Justo
+        </h1>
+        <p className="mt-3 text-lg font-700 leading-relaxed text-[var(--ink-soft)]">
+          Esta sala se juega con papel. No hace falta el celular: escribí el
+          precio en tu hoja y mirá la TV para el producto, el tiempo y la
+          revelación.
+        </p>
+        <p className="mt-6 font-800 text-[var(--navy)]">Sala {room.code}</p>
+      </main>
+    );
+  }
+
   const myResult = room.results?.find((r) => r.playerId === playerId);
 
   return (
